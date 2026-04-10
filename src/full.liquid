@@ -1,0 +1,516 @@
+{% comment %}
+  TRMNL Calendar + Weather Plugin (Time-Grid Layout)
+  Events positioned at actual time slots. Dynamic time range.
+  Calendar bars use grayscale + patterns on the stripe for differentiation.
+  Past events dimmed. Current time tick on axis.
+  Overlapping events displayed side by side.
+
+  Data sources (Polling strategy):
+    IDX_0 = TRMNL Calendar API (events grouped by "Month DD" keys)
+    IDX_1 = Open-Meteo daily forecast + current conditions
+
+  Recommended Open-Meteo URL (IDX_1):
+    https://api.open-meteo.com/v1/forecast?latitude=41.39&longitude=2.17
+      &daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max,sunrise,sunset,uv_index_max
+      &hourly=temperature_2m,precipitation_probability
+      &current=temperature_2m
+      &timezone=Europe/Madrid&forecast_days=7
+
+  Optional Air Quality URL (IDX_2):
+    https://air-quality-api.open-meteo.com/v1/air-quality?latitude=41.39&longitude=2.17&current=european_aqi&timezone=Europe/Madrid
+{% endcomment %}
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .screen, .view, .view--full, .view--half_vertical, .view--half_horizontal, .layout, .layout--col, .layout--row { padding: 0 !important; margin: 0 !important; width: 100% !important; height: 480px !important }
+  #cw-container { width: 100%; height: 480px; }
+
+  .cw-wrap {
+    width: 100%; height: 480px;
+    display: flex; flex-direction: column;
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    -webkit-font-smoothing: none; overflow: hidden;
+  }
+
+  /* === HEADER === */
+  .cw-header-row { display: flex; flex-shrink: 0; }
+  .cw-corner {
+    width: 34px; flex-shrink: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: flex-end;
+    background: #000; color: #fff; line-height: 1; padding-bottom: 1px;
+  }
+  .cw-corner-temp { font-size: 12px; font-weight: bold; }
+  .cw-corner-rain { font-size: 9px; }
+  .cw-day-headers { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); }
+  .cw-day-header {
+    background: #000; color: #fff; text-align: center;
+    padding: 2px 1px; font-size: 10px; font-weight: bold;
+    line-height: 1.2; white-space: nowrap; border-left: 1px solid #555;
+  }
+  .cw-day-header.is-today { background: #555; }
+
+  /* === WEATHER === */
+  .cw-weather-row { display: flex; flex-shrink: 0; border-bottom: 1px solid #000; }
+  .cw-corner-weather {
+    width: 34px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: #000; color: #fff;
+    border-bottom: 1px solid #000;
+  }
+  .cw-weather-cell {
+    display: flex; align-items: center; justify-content: center;
+    gap: 2px; padding: 2px 1px; min-height: 30px; border-left: 1px solid #AAA;
+    position: relative; overflow: hidden;
+  }
+  .cw-wx-text svg { width: 14px; height: 14px; flex-shrink: 0; }
+  .cw-temps { font-size: 9px; white-space: nowrap; letter-spacing: -0.3px; }
+  .cw-temp-max { font-weight: bold; }
+  .cw-wx-precip {
+    position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+    width: 100%; height: 100%;
+    display: flex; align-items: flex-end; z-index: 0;
+  }
+  .cw-wx-precip > div { flex: 1; background: #AAA; min-width: 0; }
+  .cw-wx-templine {
+    position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+    width: 100%; height: 100%; z-index: 1;
+  }
+  .cw-wx-now {
+    position: absolute; top: 0; bottom: 0;
+    width: 2px; background: #000; z-index: 3;
+  }
+  .cw-wx-text {
+    position: absolute; top: 1px; left: 1px; right: 1px;
+    z-index: 2;
+    display: flex; align-items: flex-start; justify-content: space-between;
+  }
+
+  /* === ALL-DAY === */
+  .cw-allday-row { display: flex; flex-shrink: 0; border-bottom: 1px solid #000; }
+  .cw-allday-cell { overflow: hidden; padding: 1px; border-left: 1px solid #AAA; }
+  .cw-allday-evt { display: flex; align-items: stretch; margin-bottom: 1px; border-radius: 1px; overflow: hidden; }
+  .cw-allday-bar { width: 6px; flex-shrink: 0; }
+  .cw-allday-text {
+    flex: 1; padding: 0 2px; font-size: 8px; line-height: 1.4;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    color: #000; border: 1px solid #AAA; border-left: none;
+  }
+  .cw-allday-text.is-past { background: #AAA; }
+  .cw-allday-text.is-future { background: #fff; }
+
+  /* === TIME GRID === */
+  .cw-grid-area { flex: 1; display: flex; overflow: hidden; position: relative; }
+  .cw-time-axis { width: 34px; flex-shrink: 0; position: relative; border-right: 1px solid #AAA; }
+  .cw-hour-label {
+    position: absolute; right: 3px; font-size: 9px; color: #555;
+    font-weight: bold; line-height: 1; transform: translateY(-50%); white-space: nowrap;
+  }
+  .cw-hour-weather {
+    position: absolute; right: 1px; font-size: 8px; color: #555;
+    line-height: 1; transform: translateY(-50%); white-space: nowrap;
+  }
+  .cw-now-tick {
+    position: absolute; left: 0; right: -1px;
+    height: 2px; background: #000;
+    transform: translateY(-1px); z-index: 20;
+  }
+  .cw-now-label {
+    position: absolute; left: 1px;
+    font-size: 7px; font-weight: bold; color: #000;
+    line-height: 1; white-space: nowrap;
+    transform: translateY(-100%); margin-top: -2px;
+  }
+  .cw-columns { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); position: relative; }
+  .cw-day-col { position: relative; border-right: 1px solid #AAA; overflow: hidden; }
+  .cw-day-col:last-child { border-right: none; }
+  .cw-day-col.cw-week-start, .cw-weather-cell.cw-week-start, .cw-allday-cell.cw-week-start, .cw-day-header.cw-week-start { border-left: 1px solid #555; }
+  .cw-hour-line { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed #AAA; }
+  .cw-half-line { position: absolute; left: 0; right: 0; height: 0; border-top: none; background: repeating-linear-gradient(90deg, #AAA 0px, #AAA 1px, transparent 1px, transparent 7px); height: 1px; }
+
+  /* === EVENTS === */
+  .cw-evt {
+    position: absolute;
+    display: flex; overflow: hidden; border-radius: 1px;
+    min-height: 10px; z-index: 5;
+  }
+  .cw-evt-bar { width: 6px; flex-shrink: 0; }
+  .cw-evt-body {
+    flex: 1; padding: 1px 2px; overflow: hidden;
+    min-width: 0; border: 1px solid #AAA; border-left: none;
+  }
+  .cw-evt-body.is-past { background: #AAA; }
+  .cw-evt-body.is-future { background: #fff; }
+  .cw-evt-title {
+    font-size: 8px; line-height: 1.2;
+    overflow: hidden; font-weight: bold;
+    word-break: break-word;
+  }
+  .cw-evt-time { font-size: 8px; color: #555; line-height: 1.1; }
+  .cw-evt-detail {
+    font-size: 8px; color: #555; line-height: 1.1;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* === BAR PATTERNS (11 combos) === */
+  .cw-bar-0 { background: #AAA; }
+  .cw-bar-1 { background: #000; }
+  .cw-bar-2 { background: #fff; border: 1px solid #000; }
+  .cw-bar-3 { background: repeating-linear-gradient(45deg, #AAA 0px, #AAA 1.5px, #fff 1.5px, #fff 3px); }
+  .cw-bar-4 { background: repeating-linear-gradient(-45deg, #000 0px, #000 1.5px, #fff 1.5px, #fff 3px); }
+  .cw-bar-5 { background: repeating-linear-gradient(0deg, #AAA 0px, #AAA 2px, #fff 2px, #fff 4px); }
+  .cw-bar-6 { background: repeating-linear-gradient(90deg, #AAA 0px, #AAA 2px, #fff 2px, #fff 4px); }
+  .cw-bar-7 { background: repeating-linear-gradient(0deg, #000 0px, #000 2px, #fff 2px, #fff 4px); }
+  .cw-bar-8 { background: repeating-linear-gradient(90deg, #000 0px, #000 2px, #fff 2px, #fff 4px); }
+  .cw-bar-9 { background: repeating-linear-gradient(-45deg, #AAA 0px, #AAA 1.5px, #fff 1.5px, #fff 3px); }
+  .cw-bar-10 { background: repeating-linear-gradient(45deg, #000 0px, #000 1.5px, #fff 1.5px, #fff 3px); }
+
+  /* === LEGEND === */
+  .cw-legend {
+    display: flex; align-items: center; gap: 8px;
+    padding: 3px 6px 4px; min-height: 20px;
+    flex-shrink: 0; border-top: 1px solid #000;
+    font-size: 8px;
+  }
+  .cw-legend-item { display: flex; align-items: center; gap: 3px; white-space: nowrap; }
+  .cw-legend-swatch { width: 6px; height: 12px; border-radius: 1px; flex-shrink: 0; }
+  .cw-legend-extra { color: #555; white-space: nowrap; }
+
+  .cw-empty { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 14px; color: #555; }
+</style>
+
+<div id="cw-container" style="width: 100%; height: 100%;"></div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  // Parse data: TRMNL production uses IDX_0/IDX_1, trmnlp uses custom_fields (Ruby hash format)
+  function parseLiquid(str) { return JSON.parse(str.replace(/ => /g, ': ')); }
+  function hasCalData(obj) { return obj && ((obj.data && obj.data.events) || obj.events); }
+  var calRaw, weatherRaw;
+  // Calendar: try IDX_0 (production), then custom_fields (trmnlp)
+  try { calRaw = JSON.parse(`{{ IDX_0 | json }}`); } catch(e) { calRaw = null; }
+  if (!hasCalData(calRaw)) { try { calRaw = parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_0 }}`); } catch(e) { calRaw = null; } }
+  // Weather: try IDX_1 (production + trmnlp polling), then custom_fields
+  try { weatherRaw = JSON.parse(`{{ IDX_1 | json }}`); } catch(e) { weatherRaw = null; }
+  if (!weatherRaw || !weatherRaw.daily) { try { weatherRaw = parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_1 }}`); } catch(e) { weatherRaw = null; } }
+
+  var container = document.getElementById("cw-container");
+  var hasWeather = !!(weatherRaw && weatherRaw.daily);
+  if (!hasWeather && !hasCalData(calRaw)) { container.innerHTML = '<div class="cw-empty">No data available</div>'; return; }
+
+  // === PARSE CALENDAR DATA ===
+  var eventsByDate = {}, todayStr = "", calFriendlyNames = {}, firstDayOfWeek = 1;
+  if (calRaw) {
+    var cd = calRaw.data || calRaw;
+    var rawEvents = cd.events || [];
+    calFriendlyNames = cd.calendar_names || {};
+    todayStr = (cd.today_in_tz || "").substring(0, 10);
+    firstDayOfWeek = cd.first_day != null ? cd.first_day : 1; // 0=Sun, 1=Mon
+
+    // Handle both flat array (production) and grouped object (trmnlp mock)
+    if (Array.isArray(rawEvents)) {
+      for (var i = 0; i < rawEvents.length; i++) {
+        var ev = rawEvents[i];
+        if (ev.all_day) {
+          // Multi-day: add to each day in range (end is exclusive)
+          var sd = (ev.start_full || ev.start || "").substring(0, 10);
+          var ed = (ev.end_full || ev.end || "").substring(0, 10);
+          if (sd) {
+            var dc = new Date(sd), dce = ed ? new Date(ed) : new Date(sd);
+            dce.setDate(dce.getDate()); // end is exclusive for all-day
+            while (dc < dce) {
+              var dk = dc.getFullYear()+'-'+String(dc.getMonth()+1).padStart(2,'0')+'-'+String(dc.getDate()).padStart(2,'0');
+              if (!eventsByDate[dk]) eventsByDate[dk] = [];
+              eventsByDate[dk].push(ev);
+              dc.setDate(dc.getDate() + 1);
+            }
+          }
+        } else {
+          var dk = (ev.date_time || ev.start_full || "").substring(0, 10);
+          if (dk) {
+            if (!eventsByDate[dk]) eventsByDate[dk] = [];
+            eventsByDate[dk].push(ev);
+          }
+        }
+      }
+    } else {
+      // Grouped by "Month DD" key (trmnlp mock format)
+      var MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
+      eventsByDate = rawEvents; // already grouped
+      // We'll match by calKey below
+    }
+  }
+  var eventsGrouped = Array.isArray((calRaw && (calRaw.data||calRaw).events)||[]);
+
+  // === PARSE WEATHER DATA (all optional) ===
+  var daily = hasWeather ? weatherRaw.daily : {};
+  var dates = daily.time || [];
+  var tempMax = daily.temperature_2m_max || [], tempMin = daily.temperature_2m_min || [];
+  var wmoCodes = daily.weather_code || [], rainProb = daily.precipitation_probability_max || [];
+  var currentTemp = (hasWeather && weatherRaw.current && weatherRaw.current.temperature_2m != null) ? Math.round(weatherRaw.current.temperature_2m) : null;
+  var sunrise = (daily.sunrise && daily.sunrise[0]) ? daily.sunrise[0].substring(11,16) : null;
+  var sunset = (daily.sunset && daily.sunset[0]) ? daily.sunset[0].substring(11,16) : null;
+  var uvMax = (daily.uv_index_max && daily.uv_index_max[0] != null) ? Math.round(daily.uv_index_max[0]) : null;
+  var aqi = null;
+  try { var aqRaw = JSON.parse(`{{ IDX_2 | json }}`); if(aqRaw && aqRaw.current) aqi = Math.round(aqRaw.current.european_aqi); } catch(e) {}
+  if (aqi===null) { try { var aqRaw2 = parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_2 }}`); if(aqRaw2 && aqRaw2.current) aqi = Math.round(aqRaw2.current.european_aqi); } catch(e) {} }
+
+  // If no weather dates, derive from calendar events
+  if (dates.length === 0 && todayStr) {
+    var d = new Date(todayStr);
+    for (var i = 0; i < 7; i++) {
+      dates.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
+      d.setDate(d.getDate() + 1);
+    }
+  }
+
+  // Hourly weather per date (for charts + axis labels)
+  var hourlyByDate = {};
+  if (hasWeather && weatherRaw.hourly && weatherRaw.hourly.time) {
+    var ht=weatherRaw.hourly.time, hTmp=weatherRaw.hourly.temperature_2m||[], hPrc=weatherRaw.hourly.precipitation_probability||[];
+    for(var i=0;i<ht.length;i++){
+      var dI=ht[i].substring(0,10), hr=parseInt(ht[i].substring(11,13),10);
+      if(!hourlyByDate[dI]) hourlyByDate[dI]=[];
+      hourlyByDate[dI][hr]={t:hTmp[i],p:hPrc[i]||0};
+    }
+  }
+  var todayHourly = {};
+  var todayH = hourlyByDate[dates[0]]||[];
+  for(var hr=0;hr<24;hr++){if(todayH[hr])todayHourly[hr]={t:Math.round(todayH[hr].t),p:Math.round(todayH[hr].p)};}
+
+  // === CALENDAR NAME RESOLUTION ===
+  // calFriendlyNames maps email -> display name (e.g. "guplem@gmail.com" -> "Personal")
+  function resolveName(email) { return calFriendlyNames[email] || email; }
+
+  var calNameMap = {}, calNameIdx = 0;
+  function getCalIdx(cn) { if(!cn)return 0; cn=resolveName(cn); if(calNameMap[cn]===undefined){calNameMap[cn]=calNameIdx%11;calNameIdx++;} return calNameMap[cn]; }
+
+  // Scan all events for unique calendar names
+  var allCalNames = [];
+  function addCalName(email) {
+    var name = resolveName(email);
+    if (name && allCalNames.indexOf(name) === -1) allCalNames.push(name);
+  }
+  for (var dk in eventsByDate) {
+    var evs = eventsByDate[dk];
+    if (!Array.isArray(evs)) continue;
+    for (var e = 0; e < evs.length; e++) addCalName(evs[e].calname || "");
+  }
+  allCalNames.sort();
+  for (var c = 0; c < allCalNames.length; c++) getCalIdx(allCalNames[c]);
+
+  // === HELPERS ===
+  var DA=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  var MN2=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  function dayInfo(iso){var p=iso.split("-");var d=new Date(+p[0],+p[1]-1,+p[2]);return{dn:DA[d.getDay()],dd:+p[2]};}
+  // Parse time from ISO timestamp (e.g. "2026-04-09T08:55:00.000+02:00") or HH:MM or AM/PM
+  function toMin(startField, fullField) {
+    // Prefer start_full ISO timestamp
+    if (fullField && fullField.length > 16) {
+      var tp = fullField.substring(11, 16).split(":");
+      return +tp[0] * 60 + +tp[1];
+    }
+    if (!startField) return -1;
+    // Handle AM/PM format
+    var s = startField.trim().toUpperCase();
+    var pm = s.indexOf("PM") > -1, am = s.indexOf("AM") > -1;
+    s = s.replace(/[AP]M/gi, "").trim();
+    var p = s.split(":");
+    var h = +p[0], m = +p[1] || 0;
+    if (pm && h < 12) h += 12;
+    if (am && h === 12) h = 0;
+    return h * 60 + m;
+  }
+  function esc(s){var d=document.createElement("div");d.appendChild(document.createTextNode(s));return d.innerHTML;}
+  function fmtH(m){var h=Math.floor(m/60);return(h<10?" ":"")+h+":00";}
+  function fmtT(m){var h=Math.floor(m/60),mm=m%60;return(h<10?"0":"")+h+":"+(mm<10?"0":"")+mm;}
+  // Format time for display (from minutes)
+  function fmtEvt(m){var h=Math.floor(m/60),mm=m%60;return h+":"+(mm<10?"0":"")+mm;}
+
+  // === GROUP EVENTS BY DATE FOR DISPLAY ===
+  // For trmnlp mock data (grouped by "Month DD"), convert keys
+  function calKey(iso){var p=iso.split("-");return MN2[+p[1]-1]+" "+p[2];}
+
+  var gMin=1440,gMax=0,hasTimed=false,adByDate={},tmByDate={};
+  for(var i=0;i<dates.length&&i<7;i++){
+    var de;
+    if (eventsGrouped) {
+      de = eventsByDate[dates[i]] || []; // ISO key (production)
+    } else {
+      de = eventsByDate[calKey(dates[i])] || []; // "Month DD" key (trmnlp mock)
+    }
+    adByDate[dates[i]]=[]; tmByDate[dates[i]]=[];
+    for(var j=0;j<de.length;j++){
+      var ev=de[j];
+      if(ev.all_day){adByDate[dates[i]].push(ev);}
+      else{
+        var sm=toMin(ev.start, ev.start_full||ev.date_time);
+        var em=toMin(ev.end, ev.end_full);
+        if(sm<0)continue; if(em<=sm)em=sm+60;
+        tmByDate[dates[i]].push({summary:ev.summary||"No title",desc:ev.description||"",loc:ev.location||"",start:fmtEvt(sm),end:fmtEvt(em),sm:sm,em:em,cn:ev.calname||ev.calendar_name||""});
+        hasTimed=true; if(sm<gMin)gMin=sm; if(em>gMax)gMax=em;
+      }
+    }
+  }
+  if(!hasTimed){gMin=8*60;gMax=18*60;}
+  gMin=Math.floor(gMin/60)*60; gMax=Math.ceil(gMax/60)*60;
+  if(gMin===gMax)gMax=gMin+60;
+  var rng=gMax-gMin;
+
+  var hasAD=false;
+  for(var d in adByDate){if(adByDate[d].length>0){hasAD=true;break;}}
+
+  var now=new Date();
+  var nowMin=now.getHours()*60+now.getMinutes();
+  var todayIso=todayStr||(now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0"));
+
+  function isPast(dIso,em){return dIso<todayIso||(dIso===todayIso&&em<=nowMin);}
+
+  // Overlap layout: assign columns to overlapping events
+  function layoutOverlaps(evts) {
+    evts.sort(function(a,b){return a.sm-b.sm||(b.em-b.sm)-(a.em-a.sm);});
+    var clusters=[];
+    for(var i=0;i<evts.length;i++){
+      var e=evts[i],placed=false;
+      for(var ci=0;ci<clusters.length;ci++){
+        if(e.sm<clusters[ci].end){clusters[ci].events.push(e);if(e.em>clusters[ci].end)clusters[ci].end=e.em;placed=true;break;}
+      }
+      if(!placed) clusters.push({end:e.em,events:[e]});
+    }
+    for(var ci=0;ci<clusters.length;ci++){
+      var ce=clusters[ci].events,cols=[];
+      for(var i=0;i<ce.length;i++){
+        var p=false;
+        for(var c=0;c<cols.length;c++){if(ce[i].sm>=cols[c]){cols[c]=ce[i].em;ce[i].col=c;p=true;break;}}
+        if(!p){ce[i].col=cols.length;cols.push(ce[i].em);}
+      }
+      for(var i=0;i<ce.length;i++) ce[i].totalCols=cols.length;
+    }
+  }
+
+  function wIcon(c){c=+c||0;if(c<=1)return'<svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="5" y1="5" x2="7" y2="7"/><line x1="17" y1="17" x2="19" y2="19"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="5" y1="19" x2="7" y2="17"/><line x1="17" y1="7" x2="19" y2="5"/></svg>';if(c<=3)return'<svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round"><path d="M17.5 19H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 0 1 0 9z"/></svg>';if(c>=45&&c<=48)return'<svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="5" y1="10" x2="19" y2="10"/><line x1="3" y1="14" x2="21" y2="14"/><line x1="5" y1="18" x2="19" y2="18"/></svg>';if((c>=51&&c<=57)||c===80)return'<svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round"><path d="M17.5 17H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 0 1 0 9z"/><line x1="8" y1="19" x2="7.5" y2="21"/><line x1="13" y1="19" x2="12.5" y2="21"/></svg>';if((c>=61&&c<=67)||(c>=81&&c<=82))return'<svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round"><path d="M17.5 17H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 0 1 0 9z"/><line x1="7" y1="19" x2="6" y2="22"/><line x1="11" y1="19" x2="10" y2="22"/><line x1="15" y1="19" x2="14" y2="22"/></svg>';if((c>=71&&c<=77)||(c>=85&&c<=86))return'<svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round"><path d="M17.5 17H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 0 1 0 9z"/><circle cx="8" cy="20" r="0.5" fill="#000"/><circle cx="12" cy="20" r="0.5" fill="#000"/><circle cx="16" cy="20" r="0.5" fill="#000"/></svg>';if(c>=95)return'<svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round"><path d="M17.5 16H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 0 1 0 9z"/><polyline points="13,17 10,21 14,21 11,25" fill="none"/></svg>';return'<svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round"><path d="M17.5 19H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 0 1 0 9z"/></svg>';}
+
+  // ================================================================
+  // BUILD HTML
+  // ================================================================
+
+  // Mark which day column starts the week (darker separator line)
+  var isWeekStart = [];
+  for(var i=0;i<dates.length&&i<7;i++) isWeekStart[i] = (new Date(dates[i]).getDay() === firstDayOfWeek);
+
+  var h='<div class="cw-wrap">';
+
+  // --- ROW 1: Header (rain probability corner + day names) ---
+  h+='<div class="cw-header-row"><div class="cw-corner">';
+  if(hasWeather&&rainProb.length>0&&rainProb[0]!=null) h+='<span class="cw-corner-rain">'+Math.round(rainProb[0])+'%</span>';
+  h+='</div><div class="cw-day-headers">';
+  for(var i=0;i<dates.length&&i<7;i++){var di=dayInfo(dates[i]);h+='<div class="cw-day-header'+(dates[i]===todayStr?' is-today':'')+(isWeekStart[i]?' cw-week-start':'')+'">'+di.dn+' '+di.dd+'</div>';}
+  h+='</div></div>';
+
+  // --- ROW 2: Weather charts (current temp corner + per-day mini charts) ---
+  // Each day cell has 3 layers: precipitation bars, temperature line, icon+text overlay
+  if (hasWeather) {
+    h+='<div class="cw-weather-row"><div class="cw-corner-weather">';
+    if(currentTemp!==null) h+='<span class="cw-corner-temp">'+currentTemp+'\u00B0</span>';
+    h+='</div>';
+    for(var i=0;i<dates.length&&i<7;i++){
+      var dh=hourlyByDate[dates[i]]||[];
+      h+='<div class="cw-weather-cell'+(isWeekStart[i]?' cw-week-start':'')+'" style="flex:1;">';
+      // Layer 1: Precipitation probability bars (24 columns, height = probability %)
+      h+='<div class="cw-wx-precip">';
+      for(var hh=0;hh<24;hh++){var pp=dh[hh]?Math.round(dh[hh].p):0;h+='<div style="height:'+pp+'%"></div>';}
+      h+='</div>';
+      // Layer 2: Temperature line (SVG polyline, scale: 0C=bottom, 40C=top)
+      h+='<svg class="cw-wx-templine" viewBox="0 0 23 40" preserveAspectRatio="none"><polyline points="';
+      var pts='',fc=true;
+      for(var hh=0;hh<24;hh++){if(dh[hh]){if(!fc)pts+=' ';pts+=hh+','+(40-Math.max(0,Math.min(40,dh[hh].t))).toFixed(1);fc=false;}}
+      h+=pts+'" fill="none" stroke="#555" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>';
+      // Vertical "now" line on today's weather cell
+      if(dates[i]===todayIso){var nowPctW=(nowMin/1440)*100;h+='<div class="cw-wx-now" style="left:'+nowPctW+'%"></div>';}
+      // Layer 3: Weather icon (left) + min/max temp text (right)
+      h+='<span class="cw-wx-text">'+wIcon(wmoCodes[i])+'<span class="cw-temps">'+Math.round(tempMin[i])+'\u00B0/<span class="cw-temp-max">'+Math.round(tempMax[i])+'\u00B0</span></span></span>';
+      h+='</div>';
+    }
+    h+='</div>';
+  }
+
+  // --- ROW 3: All-day events strip (only rendered if any exist) ---
+  if(hasAD){
+    h+='<div class="cw-allday-row"><div style="width:34px;flex-shrink:0;font-size:7px;color:#555;padding:1px 1px 1px 4px;border-bottom:1px solid #000;">ALL<br>DAY</div>';
+    for(var i=0;i<dates.length&&i<7;i++){
+      var ad=adByDate[dates[i]]||[];
+      h+='<div class="cw-allday-cell'+(isWeekStart[i]?' cw-week-start':'')+'" style="flex:1;">';
+      for(var a=0;a<ad.length;a++){var ci=getCalIdx(ad[a].calname||ad[a].calendar_name||""),past=isPast(dates[i],1440);h+='<div class="cw-allday-evt"><div class="cw-allday-bar cw-bar-'+ci+'"></div><div class="cw-allday-text '+(past?'is-past':'is-future')+'">'+esc(ad[a].summary||"No title")+'</div></div>';}
+      h+='</div>';
+    }
+    h+='</div>';
+  }
+
+  // --- ROW 4: Time grid (fills remaining height) ---
+  // Left: time axis with hour labels, hourly weather, and now indicator
+  h+='<div class="cw-grid-area"><div class="cw-time-axis">';
+  // Hour labels (e.g. " 9:00", "10:00")
+  for(var m=gMin;m<=gMax;m+=60) h+='<div class="cw-hour-label" style="top:'+((m-gMin)/rng*100)+'%;">'+fmtH(m)+'</div>';
+  // Hourly weather at half-hour marks: shows temp if dry (<40%), rain% if wet (>=40%)
+  for(var m=gMin+30;m<gMax;m+=60){var hr=Math.floor(m/60),hw=todayHourly[hr];if(hw){var wxTxt=hw.p>=40?hw.p+'%':'<b>'+hw.t+'\u00B0</b>';h+='<div class="cw-hour-weather" style="top:'+((m-gMin)/rng*100)+'%;">'+wxTxt+'</div>';}}
+  // Current time indicator (bold tick line, clamped to grid range)
+  var nowC=Math.max(gMin,Math.min(gMax,nowMin)),nowP=((nowC-gMin)/rng)*100;
+  h+='<div class="cw-now-tick" style="top:'+nowP+'%;"></div>';
+  h+='</div><div class="cw-columns">';
+
+  // Horizontal grid lines: dashed for hours, sparse dots for half-hours
+  for(var m=gMin;m<=gMax;m+=60) h+='<div class="cw-hour-line" style="top:'+((m-gMin)/rng*100)+'%;"></div>';
+  for(var m=gMin+30;m<gMax;m+=60) h+='<div class="cw-half-line" style="top:'+((m-gMin)/rng*100)+'%;"></div>';
+
+  // Day columns with positioned events
+  for(var i=0;i<dates.length&&i<7;i++){
+    h+='<div class="cw-day-col'+(isWeekStart[i]?' cw-week-start':'')+'">';
+    var dt=tmByDate[dates[i]]||[];
+    // Assign side-by-side columns for overlapping events
+    layoutOverlaps(dt);
+    for(var t=0;t<dt.length;t++){
+      var ev=dt[t];
+      // Position event block: top and height as % of the visible time range
+      var topP=((ev.sm-gMin)/rng)*100,htP=((ev.em-ev.sm)/rng)*100;
+      if(topP<0){htP+=topP;topP=0;} if(topP+htP>100)htP=100-topP; if(htP<2)htP=2;
+      var dur=ev.em-ev.sm,ci=getCalIdx(ev.cn),past=isPast(dates[i],ev.em);
+      // For overlapping events: divide width equally among columns
+      var tc=ev.totalCols||1,col=ev.col||0;
+      var leftP=(col/tc)*100,widP=(1/tc)*100;
+
+      h+='<div class="cw-evt" style="top:'+topP+'%;height:'+htP+'%;left:'+leftP+'%;width:'+widP+'%;">';
+      h+='<div class="cw-evt-bar cw-bar-'+ci+'"></div>';
+      h+='<div class="cw-evt-body '+(past?'is-past':'is-future')+'">';
+      h+='<div class="cw-evt-title">'+esc(ev.summary)+'</div>';
+      // Show time for events 30min+, show location/description for events 60min+
+      if(dur>=30) h+='<div class="cw-evt-time">'+esc(ev.start)+(ev.end?'-'+esc(ev.end):'')+'</div>';
+      if(dur>=60){var det="";if(ev.loc)det+=ev.loc;if(ev.desc){if(det)det+=" - ";det+=ev.desc;}if(det)h+='<div class="cw-evt-detail">'+esc(det)+'</div>';}
+      h+='</div></div>';
+    }
+    h+='</div>';
+  }
+  h+='</div></div>';
+
+  // --- ROW 5: Legend bar (calendar names left, weather info right) ---
+  var hasExtra = sunrise||sunset||uvMax!==null||aqi!==null;
+  if(allCalNames.length>1||hasExtra){
+    h+='<div class="cw-legend">';
+    // Calendar legend: colored swatches + names
+    for(var l=0;l<allCalNames.length;l++){var idx=calNameMap[allCalNames[l]];h+='<span class="cw-legend-item"><span class="cw-legend-swatch cw-bar-'+idx+'"></span><span>'+esc(allCalNames[l])+'</span></span>';}
+    h+='<span style="flex:1"></span>';
+    // Weather extras: sunrise, sunset, UV index, air quality
+    var extras=[];
+    var sunSvg='<svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="#555" stroke-width="1.5" style="vertical-align:middle"><circle cx="8" cy="8" r="3"/><line x1="8" y1="1" x2="8" y2="3.5"/><line x1="8" y1="12.5" x2="8" y2="15"/><line x1="3" y1="3" x2="4.8" y2="4.8"/><line x1="11.2" y1="11.2" x2="13" y2="13"/><line x1="1" y1="8" x2="3.5" y2="8"/><line x1="12.5" y1="8" x2="15" y2="8"/><line x1="3" y1="13" x2="4.8" y2="11.2"/><line x1="11.2" y1="4.8" x2="13" y2="3"/></svg>';
+    var moonSvg='<svg viewBox="0 0 16 16" width="10" height="10" fill="#555" stroke="#555" stroke-width="1" style="vertical-align:middle"><path d="M13 8a5 5 0 1 1-5-5 3.5 3.5 0 0 0 5 5z"/></svg>';
+    if(sunrise) extras.push(sunSvg+' '+sunrise);
+    if(sunset) extras.push(moonSvg+' '+sunset);
+    if(uvMax!==null) extras.push('UV:'+uvMax);
+    if(aqi!==null) extras.push('AQI:'+aqi);
+    if(extras.length) h+='<span class="cw-legend-extra">'+extras.join('&nbsp; &nbsp; &nbsp;')+'</span>';
+    h+='</div>';
+  }
+
+  h+='</div>';
+  container.innerHTML=h;
+});
+</script>

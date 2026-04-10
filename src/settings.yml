@@ -1,0 +1,8 @@
+---
+name: "Calendar + Weather"
+description: "Weekly calendar with weather forecast for Barcelona."
+polling_url: |
+  https://jsonplaceholder.typicode.com/posts/1
+  https://api.open-meteo.com/v1/forecast?latitude=41.39&longitude=2.17&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max,sunrise,sunset,uv_index_max&hourly=temperature_2m,precipitation_probability&current=temperature_2m&timezone=Europe/Madrid&forecast_days=7
+  https://air-quality-api.open-meteo.com/v1/air-quality?latitude=41.39&longitude=2.17&current=european_aqi&timezone=Europe/Madrid
+polling_verb: GET
