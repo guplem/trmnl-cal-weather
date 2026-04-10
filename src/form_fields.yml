@@ -41,13 +41,3 @@
   field_type: time_zone
   description: "Your local timezone (must match your TRMNL timezone)"
   group: Location
-
-- keyname: enable_aqi
-  name: Include Air Quality Index?
-  field_type: select
-  options:
-    - "yes"
-    - "no"
-  default: "yes"
-  description: "Show European Air Quality Index (AQI) in the bottom legend"
-  group: Options
