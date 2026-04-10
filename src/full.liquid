@@ -421,7 +421,11 @@ document.addEventListener("DOMContentLoaded", function() {
       for(var hh=0;hh<24;hh++){var pp=dh[hh]?Math.round(dh[hh].p):0;h+='<div style="height:'+pp+'%"></div>';}
       h+='</div>';
       // Layer 2: Temperature line (SVG polyline, scale: 0C=bottom, 40C=top)
-      h+='<svg class="cw-wx-templine" viewBox="0 0 23 40" preserveAspectRatio="none"><polyline points="';
+      h+='<svg class="cw-wx-templine" viewBox="0 0 23 40" preserveAspectRatio="none">';
+      // Reference lines: vertical at noon (x=12), horizontal at 20 degrees (y=20)
+      h+='<line x1="12" y1="0" x2="12" y2="40" stroke="#AAA" stroke-width="0.5" stroke-dasharray="1,2" vector-effect="non-scaling-stroke"/>';
+      h+='<line x1="0" y1="20" x2="23" y2="20" stroke="#AAA" stroke-width="0.5" stroke-dasharray="1,2" vector-effect="non-scaling-stroke"/>';
+      h+='<polyline points="';
       var pts='',fc=true;
       for(var hh=0;hh<24;hh++){if(dh[hh]){if(!fc)pts+=' ';pts+=hh+','+(40-Math.max(0,Math.min(40,dh[hh].t))).toFixed(1);fc=false;}}
       h+=pts+'" fill="none" stroke="#555" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>';
