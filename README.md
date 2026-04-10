@@ -43,8 +43,8 @@ After saving, note the **plugin_setting_id** from the URL:
 
 ```
 https://usetrmnl.com/plugin_settings/12345/edit
-                                       ^^^^^
-                                    this number
+                                     ^^^^^
+                                  this number
 ```
 
 ### Step 2: Get your API key
@@ -183,9 +183,3 @@ TRMNL Polling (every ~15 min)
 | Screen not updating | TRMNL skips re-render if polled data is identical. Click "Force Refresh" after markup changes. |
 | White space at edges | The template overrides TRMNL framework padding. If it reappears, inspect which wrapper div needs `padding: 0 !important`. |
 | Colors look dithered | Only 4 native shades work on 2-bit: `#000`, `#555`, `#AAA`, `#fff`. All other values get Floyd-Steinberg dithered. |
-
-## Credits
-
-Built with [Claude Code](https://claude.ai/code).
-
-Weather data by [Open-Meteo](https://open-meteo.com) (free, open-source weather API).
