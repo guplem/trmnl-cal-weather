@@ -44,14 +44,10 @@
   .cw-corner-rain { font-size: 9px; }
   .cw-day-headers { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); }
   .cw-day-header {
-    background: #000; color: #fff;
-    padding: 2px 3px 2px 6px; font-size: 10px; font-weight: bold;
+    background: #000; color: #fff; text-align: center;
+    padding: 2px 1px; font-size: 10px; font-weight: bold;
     line-height: 1.2; white-space: nowrap; border-left: 1px solid #555;
-    display: flex; align-items: center; justify-content: space-between;
   }
-  .cw-day-wx svg { width: 12px; height: 12px; }
-  .cw-day-wx { display: flex; align-items: center; gap: 2px; font-size: 9px; }
-  .cw-day-wx .cw-temp-max { font-weight: bold; }
   .cw-day-header.is-today { background: #555; }
 
   /* === WEATHER === */
@@ -436,18 +432,6 @@ document.addEventListener("DOMContentLoaded", function() {
     return'<svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round"><path d="M17.5 19H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 0 1 0 9z" fill="#fff"/></svg>';
   }
 
-  // Same icons but white stroke + black fill (for use on black header background)
-  function wIconWhite(c){c=+c||0;
-    if(c<=1)return'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4" fill="#000"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="5" y1="5" x2="7" y2="7"/><line x1="17" y1="17" x2="19" y2="19"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="5" y1="19" x2="7" y2="17"/><line x1="17" y1="7" x2="19" y2="5"/></svg>';
-    if(c<=3)return'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M17.5 19H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 0 1 0 9z" fill="#000"/></svg>';
-    if(c>=45&&c<=48)return'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="5" y1="10" x2="19" y2="10"/><line x1="3" y1="14" x2="21" y2="14"/><line x1="5" y1="18" x2="19" y2="18"/></svg>';
-    if((c>=51&&c<=57)||c===80)return'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M17.5 17H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 0 1 0 9z" fill="#000"/><line x1="8" y1="19" x2="7.5" y2="21"/><line x1="13" y1="19" x2="12.5" y2="21"/></svg>';
-    if((c>=61&&c<=67)||(c>=81&&c<=82))return'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M17.5 17H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 0 1 0 9z" fill="#000"/><line x1="7" y1="19" x2="6" y2="22"/><line x1="11" y1="19" x2="10" y2="22"/><line x1="15" y1="19" x2="14" y2="22"/></svg>';
-    if((c>=71&&c<=77)||(c>=85&&c<=86))return'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M17.5 17H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 0 1 0 9z" fill="#000"/><circle cx="8" cy="20" r="0.5" fill="#fff"/><circle cx="12" cy="20" r="0.5" fill="#fff"/><circle cx="16" cy="20" r="0.5" fill="#fff"/></svg>';
-    if(c>=95)return'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M17.5 16H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 0 1 0 9z" fill="#000"/><polyline points="13,17 10,21 14,21 11,25" fill="none"/></svg>';
-    return'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M17.5 19H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 0 1 0 9z" fill="#000"/></svg>';
-  }
-
   // ================================================================
   // BUILD HTML
   // ================================================================
@@ -462,13 +446,7 @@ document.addEventListener("DOMContentLoaded", function() {
   h+='<div class="cw-header-row"><div class="cw-corner">';
   if(hasWeather&&rainProb.length>0&&rainProb[0]!=null) h+='<span class="cw-corner-rain">'+Math.round(rainProb[0])+'%</span>';
   h+='</div><div class="cw-day-headers">';
-  for(var i=0;i<dates.length&&i<7;i++){
-    var di=dayInfo(dates[i]);
-    h+='<div class="cw-day-header'+(dates[i]===todayStr?' is-today':'')+(isWeekStart[i]?' cw-week-start':'')+'">';
-    h+='<span>'+di.dn+' '+di.dd+'</span>';
-    if(hasWeather&&wmoCodes[i]!=null) h+='<span class="cw-day-wx" style="font-weight:normal;">'+wIconWhite(wmoCodes[i])+' '+Math.round(tempMin[i])+'\u00B0/<b>'+Math.round(tempMax[i])+'\u00B0</b></span>';
-    h+='</div>';
-  }
+  for(var i=0;i<dates.length&&i<7;i++){var di=dayInfo(dates[i]);h+='<div class="cw-day-header'+(dates[i]===todayStr?' is-today':'')+(isWeekStart[i]?' cw-week-start':'')+'">'+di.dn+' '+di.dd+'</div>';}
   h+='</div></div>';
 
   // --- ROW 2: Weather charts (current temp corner + per-day mini charts) ---
@@ -502,7 +480,7 @@ document.addEventListener("DOMContentLoaded", function() {
       // Vertical "now" line on today's weather cell
       if(dates[i]===todayIso){var nowPctW=(nowMin/1440)*100;h+='<div class="cw-wx-now" style="left:'+nowPctW+'%"></div>';}
       // Layer 3: Weather icon (left) + min/max temp text (right)
-      // Icon and temps moved to day header row
+      h+='<span class="cw-wx-text">'+wIcon(wmoCodes[i])+'<span class="cw-temps">'+Math.round(tempMin[i])+'\u00B0/<span class="cw-temp-max">'+Math.round(tempMax[i])+'\u00B0</span></span></span>';
       h+='</div>';
     }
     h+='</div>';
