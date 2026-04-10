@@ -372,8 +372,16 @@ document.addEventListener("DOMContentLoaded", function() {
   var hasAD=false;
   for(var d in adByDate){if(adByDate[d].length>0){hasAD=true;break;}}
 
+  // Use calendar's now_in_tz (user's timezone) if available, otherwise fall back to JS Date (server time)
   var now=new Date();
   var nowMin=now.getHours()*60+now.getMinutes();
+  if (calRaw) {
+    var cd2 = calRaw.data || calRaw;
+    var nowTz = cd2.now_in_tz || "";
+    if (nowTz.length >= 16) {
+      nowMin = parseInt(nowTz.substring(11,13))*60 + parseInt(nowTz.substring(14,16));
+    }
+  }
   var todayIso=todayStr||(now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0"));
 
   function isPast(dIso,em){return dIso<todayIso||(dIso===todayIso&&em<=nowMin);}
