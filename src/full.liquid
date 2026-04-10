@@ -66,23 +66,29 @@
   .cw-wx-text svg { width: 14px; height: 14px; flex-shrink: 0; }
   .cw-temps { font-size: 9px; white-space: nowrap; letter-spacing: -0.3px; }
   .cw-temp-max { font-weight: bold; }
+  .cw-wx-night {
+    position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+    width: 100%; height: 100%;
+    display: flex; z-index: 0;
+  }
+  .cw-wx-night > div { flex: 1; }
   .cw-wx-precip {
     position: absolute; left: 0; right: 0; top: 0; bottom: 0;
     width: 100%; height: 100%;
-    display: flex; align-items: flex-end; z-index: 0;
+    display: flex; align-items: flex-end; z-index: 1;
   }
   .cw-wx-precip > div { flex: 1; background: #AAA; min-width: 0; }
   .cw-wx-templine {
     position: absolute; left: 0; right: 0; top: 0; bottom: 0;
-    width: 100%; height: 100%; z-index: 1;
+    width: 100%; height: 100%; z-index: 2;
   }
   .cw-wx-now {
     position: absolute; top: 0; bottom: 0;
-    width: 2px; background: #000; z-index: 3;
+    width: 2px; background: #000; z-index: 4;
   }
   .cw-wx-text {
     position: absolute; top: 1px; left: 1px; right: 1px;
-    z-index: 2;
+    z-index: 3;
     display: flex; align-items: flex-start; justify-content: space-between;
   }
 
@@ -416,6 +422,12 @@ document.addEventListener("DOMContentLoaded", function() {
     for(var i=0;i<dates.length&&i<7;i++){
       var dh=hourlyByDate[dates[i]]||[];
       h+='<div class="cw-weather-cell'+(isWeekStart[i]?' cw-week-start':'')+'" style="flex:1;">';
+      // Layer 0: Nighttime shading (gray-75 background for hours before sunrise / after sunset)
+      var srHr = (daily.sunrise && daily.sunrise[i]) ? parseInt(daily.sunrise[i].substring(11,13)) : 7;
+      var ssHr = (daily.sunset && daily.sunset[i]) ? parseInt(daily.sunset[i].substring(11,13)) : 20;
+      h+='<div class="cw-wx-night">';
+      for(var hh=0;hh<24;hh++){h+='<div'+((hh<srHr||hh>=ssHr)?' style="background:#EEE"':'')+'></div>';}
+      h+='</div>';
       // Layer 1: Precipitation probability bars (24 columns, height = probability %)
       h+='<div class="cw-wx-precip">';
       for(var hh=0;hh<24;hh++){var pp=dh[hh]?Math.round(dh[hh].p):0;h+='<div style="height:'+pp+'%"></div>';}
