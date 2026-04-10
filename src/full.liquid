@@ -21,8 +21,8 @@
 {% endcomment %}
 
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  .screen, .view, .view--full, .view--half_vertical, .view--half_horizontal, .layout, .layout--col, .layout--row { padding: 0 !important; margin: 0 !important; width: 100% !important; height: 480px !important }
+  * { box-sizing: border-box; }
+  .screen, .view, .layout, .layout--col, .layout--row { padding: 0 !important; margin: 0 !important; width: 100% !important; height: 480px !important }
   #cw-container { width: 100%; height: 480px; }
 
   .cw-wrap {
@@ -32,21 +32,26 @@
     -webkit-font-smoothing: none; overflow: hidden;
   }
 
+  /* flex alignment rules */
+  .cw-corner { justify-content: flex-end; }
+  .cw-corner-weather, .cw-weather-cell, .cw-empty { justify-content: center; }
+  .cw-wx-text { justify-content: space-between; }
+
   /* === HEADER === */
   .cw-header-row { display: flex; flex-shrink: 0; }
   .cw-corner {
     width: 34px; flex-shrink: 0;
     display: flex; flex-direction: column;
-    align-items: center; justify-content: flex-end;
-    background: #000; color: #fff; line-height: 1; padding-bottom: 1px;
+    align-items: center;
+    background: #000; color: #fff; line-height: 1;
   }
-  .cw-corner-temp { font-size: 12px; font-weight: bold; }
-  .cw-corner-rain { font-size: 9px; }
+  .cw-corner-temp { font: bold 12px sans-serif; }
+  .cw-corner-rain { font: 9px sans-serif; }
   .cw-day-headers { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); }
   .cw-day-header {
-    background: #000; color: #fff; text-align: center;
-    padding: 2px 1px; font-size: 10px; font-weight: bold;
-    line-height: 1.2; white-space: nowrap; border-left: 1px solid #555;
+    background: #000; color: #fff;
+    font: bold 10px/1.2 sans-serif;
+    white-space: nowrap; border-left: 1px solid #555;
   }
   .cw-day-header.is-today { background: #555; }
 
@@ -54,17 +59,17 @@
   .cw-weather-row { display: flex; flex-shrink: 0; border-bottom: 1px solid #000; }
   .cw-corner-weather {
     width: 34px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
+    display: flex; align-items: center;
     background: #000; color: #fff;
     border-bottom: 1px solid #000;
   }
   .cw-weather-cell {
-    display: flex; align-items: center; justify-content: center;
-    gap: 2px; padding: 2px 1px; min-height: 30px; border-left: 1px solid #AAA;
+    display: flex; align-items: center;
+    gap: 2px; min-height: 30px; border-left: 1px solid #AAA;
     position: relative; overflow: hidden;
   }
   .cw-wx-text svg { width: 14px; height: 14px; flex-shrink: 0; }
-  .cw-temps { font-size: 9px; white-space: nowrap; letter-spacing: -0.3px; background: #fff; padding: 0 1px; border-radius: 3px; }
+  .cw-temps { font: 9px sans-serif; white-space: nowrap; letter-spacing: -0.3px; background: #fff; }
   .cw-temp-max { font-weight: bold; }
   .cw-wx-night {
     position: absolute; left: 0; right: 0; top: 0; bottom: 0;
@@ -72,11 +77,8 @@
     display: flex; z-index: 0;
   }
   .cw-wx-night > div { flex: 1; }
-  /* Using custom dot pattern as primary, TRMNL framework class as fallback */
   .cw-wx-night-on {
-    background-color: #fff;
-    background-image: radial-gradient(#AAA 0.5px, transparent 0.5px);
-    background-size: 4px 4px;
+    background: radial-gradient(#AAA 0.5px, transparent 0.5px) 0 0 / 4px 4px #fff;
   }
   .cw-wx-precip {
     position: absolute; left: 0; right: 0; top: 0; bottom: 0;
@@ -95,16 +97,17 @@
   .cw-wx-text {
     position: absolute; top: 1px; left: 1px; right: 1px;
     z-index: 3;
-    display: flex; align-items: flex-start; justify-content: space-between;
+    display: flex; align-items: flex-start;
   }
 
   /* === ALL-DAY === */
   .cw-allday-row { display: flex; flex-shrink: 0; border-bottom: 1px solid #000; }
-  .cw-allday-cell { overflow: hidden; padding: 1px; border-left: 1px solid #AAA; }
-  .cw-allday-evt { display: flex; align-items: stretch; margin-bottom: 1px; border-radius: 1px; overflow: hidden; }
+  .cw-allday-label { width: 34px; flex-shrink: 0; font: 7px sans-serif; color: #555; border-bottom: 1px solid #000; }
+  .cw-allday-cell { overflow: hidden; display: flex; flex-direction: column; gap: 1px; border-left: 1px solid #AAA; }
+  .cw-allday-evt { display: flex; align-items: stretch; overflow: hidden; }
   .cw-allday-bar { width: 6px; flex-shrink: 0; }
   .cw-allday-text {
-    flex: 1; padding: 0 2px; font-size: 8px; line-height: 1.4;
+    flex: 1; font: 8px/1.4 sans-serif;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     color: #000; border: 1px solid #AAA; border-left: none;
   }
@@ -115,11 +118,11 @@
   .cw-grid-area { flex: 1; display: flex; overflow: hidden; position: relative; }
   .cw-time-axis { width: 34px; flex-shrink: 0; position: relative; border-right: 1px solid #AAA; }
   .cw-hour-label {
-    position: absolute; right: 2px; font-size: 9px; color: #555;
-    font-weight: bold; line-height: 1; transform: translateY(-50%); white-space: nowrap;
+    position: absolute; right: 2px; font: bold 9px sans-serif; color: #555;
+    line-height: 1; transform: translateY(-50%); white-space: nowrap;
   }
   .cw-hour-weather {
-    position: absolute; right: 1px; font-size: 8px; color: #555;
+    position: absolute; right: 1px; font: 8px sans-serif; color: #555;
     line-height: 1; transform: translateY(-50%); white-space: nowrap;
   }
   .cw-now-tick {
@@ -129,9 +132,9 @@
   }
   .cw-now-label {
     position: absolute; left: 1px;
-    font-size: 7px; font-weight: bold; color: #000;
-    line-height: 1; white-space: nowrap;
-    transform: translateY(-100%); margin-top: -2px;
+    font: bold 7px/1 sans-serif; color: #000;
+    white-space: nowrap;
+    transform: translateY(calc(-100% - 2px));
   }
   .cw-columns { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); position: relative; }
   .cw-day-col { position: relative; border-right: 1px solid #AAA; overflow: hidden; }
@@ -147,24 +150,23 @@
   /* === EVENTS === */
   .cw-evt {
     position: absolute;
-    display: flex; overflow: hidden; border-radius: 1px;
+    display: flex; overflow: hidden;
     min-height: 10px; z-index: 5;
   }
   .cw-evt-bar { width: 6px; flex-shrink: 0; }
   .cw-evt-body {
-    flex: 1; padding: 1px 2px; overflow: hidden;
+    flex: 1; overflow: hidden;
     min-width: 0; border: 1px solid #AAA; border-left: none;
   }
   .cw-evt-body.is-past { background: #AAA; }
   .cw-evt-body.is-future { background: #fff; }
   .cw-evt-title {
-    font-size: 8px; line-height: 1.2;
-    overflow: hidden; font-weight: bold;
-    word-break: break-word;
+    font: bold 8px/1.2 sans-serif;
+    overflow: hidden; word-break: break-word;
   }
-  .cw-evt-time { font-size: 8px; color: #555; line-height: 1.1; }
+  .cw-evt-time { font: 8px/1.1 sans-serif; color: #555; }
   .cw-evt-detail {
-    font-size: 8px; color: #555; line-height: 1.1;
+    font: 8px/1.1 sans-serif; color: #555;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
 
@@ -184,15 +186,14 @@
   /* === LEGEND === */
   .cw-legend {
     display: flex; align-items: center; gap: 8px;
-    padding: 3px 6px 4px; min-height: 20px;
+    min-height: 20px;
     flex-shrink: 0; border-top: 1px solid #000;
-    font-size: 8px;
+    font: 8px sans-serif;
   }
   .cw-legend-item { display: flex; align-items: center; gap: 3px; white-space: nowrap; }
-  .cw-legend-swatch { width: 6px; height: 12px; border-radius: 1px; flex-shrink: 0; }
-  .cw-legend-extra { color: #555; white-space: nowrap; }
+  .cw-legend-swatch { width: 6px; height: 12px; flex-shrink: 0; }
 
-  .cw-empty { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 14px; color: #555; }
+  .cw-empty { display: flex; align-items: center; height: 100%; font: 14px sans-serif; color: #555; }
 </style>
 
 <div id="cw-container" style="width: 100%; height: 100%;"></div>
@@ -446,7 +447,7 @@ document.addEventListener("DOMContentLoaded", function() {
   h+='<div class="cw-header-row"><div class="cw-corner">';
   if(hasWeather&&rainProb.length>0&&rainProb[0]!=null) h+='<span class="cw-corner-rain">'+Math.round(rainProb[0])+'%</span>';
   h+='</div><div class="cw-day-headers">';
-  for(var i=0;i<dates.length&&i<7;i++){var di=dayInfo(dates[i]);h+='<div class="cw-day-header'+(dates[i]===todayStr?' is-today':'')+(isWeekStart[i]?' cw-week-start':'')+'">'+di.dn+' '+di.dd+'</div>';}
+  for(var i=0;i<dates.length&&i<7;i++){var di=dayInfo(dates[i]);h+='<div class="cw-day-header p--0.5 text--center'+(dates[i]===todayStr?' is-today':'')+(isWeekStart[i]?' cw-week-start':'')+'">'+di.dn+' '+di.dd+'</div>';}
   h+='</div></div>';
 
   // --- ROW 2: Weather charts (current temp corner + per-day mini charts) ---
@@ -457,7 +458,7 @@ document.addEventListener("DOMContentLoaded", function() {
     h+='</div>';
     for(var i=0;i<dates.length&&i<7;i++){
       var dh=hourlyByDate[dates[i]]||[];
-      h+='<div class="cw-weather-cell'+(isWeekStart[i]?' cw-week-start':'')+'" style="flex:1;">';
+      h+='<div class="cw-weather-cell p--0.5'+(isWeekStart[i]?' cw-week-start':'')+'" style="flex:1;">';
       // Layer 0: Nighttime shading (gray-75 background for hours before sunrise / after sunset)
       var srHr = (daily.sunrise && daily.sunrise[i]) ? parseInt(daily.sunrise[i].substring(11,13)) : 7;
       var ssHr = (daily.sunset && daily.sunset[i]) ? parseInt(daily.sunset[i].substring(11,13)) : 20;
@@ -480,7 +481,7 @@ document.addEventListener("DOMContentLoaded", function() {
       // Vertical "now" line on today's weather cell
       if(dates[i]===todayIso){var nowPctW=(nowMin/1440)*100;h+='<div class="cw-wx-now" style="left:'+nowPctW+'%"></div>';}
       // Layer 3: Weather icon (left) + min/max temp text (right)
-      h+='<span class="cw-wx-text">'+wIcon(wmoCodes[i])+'<span class="cw-temps">'+Math.round(tempMin[i])+'\u00B0/<span class="cw-temp-max">'+Math.round(tempMax[i])+'\u00B0</span></span></span>';
+      h+='<span class="cw-wx-text">'+wIcon(wmoCodes[i])+'<span class="cw-temps px--0.5 rounded--xsmall">'+Math.round(tempMin[i])+'\u00B0/<span class="cw-temp-max">'+Math.round(tempMax[i])+'\u00B0</span></span></span>';
       h+='</div>';
     }
     h+='</div>';
@@ -488,11 +489,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // --- ROW 3: All-day events strip (only rendered if any exist) ---
   if(hasAD){
-    h+='<div class="cw-allday-row"><div style="width:34px;flex-shrink:0;font-size:7px;color:#555;padding:1px 1px 1px 6px;border-bottom:1px solid #000;">ALL<br>DAY</div>';
+    h+='<div class="cw-allday-row"><div class="cw-allday-label pl--1.5">ALL<br>DAY</div>';
     for(var i=0;i<dates.length&&i<7;i++){
       var ad=adByDate[dates[i]]||[];
-      h+='<div class="cw-allday-cell'+(isWeekStart[i]?' cw-week-start':'')+'" style="flex:1;">';
-      for(var a=0;a<ad.length;a++){var ci=getCalIdx(ad[a].calname||ad[a].calendar_name||""),past=isPast(dates[i],1440);h+='<div class="cw-allday-evt"><div class="cw-allday-bar cw-bar-'+ci+'"></div><div class="cw-allday-text '+(past?'is-past':'is-future')+'">'+esc(ad[a].summary||"No title")+'</div></div>';}
+      h+='<div class="cw-allday-cell p--0.5'+(isWeekStart[i]?' cw-week-start':'')+'" style="flex:1;">';
+      for(var a=0;a<ad.length;a++){var ci=getCalIdx(ad[a].calname||ad[a].calendar_name||""),past=isPast(dates[i],1440);h+='<div class="cw-allday-evt"><div class="cw-allday-bar cw-bar-'+ci+'"></div><div class="cw-allday-text px--0.5 '+(past?'is-past':'is-future')+'">'+esc(ad[a].summary||"No title")+'</div></div>';}
       h+='</div>';
     }
     h+='</div>';
@@ -545,7 +546,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
       h+='<div class="cw-evt" style="top:'+topP+'%;height:'+htP+'%;left:'+leftP+'%;width:'+widP+'%;">';
       h+='<div class="cw-evt-bar cw-bar-'+ci+'"></div>';
-      h+='<div class="cw-evt-body '+(past?'is-past':'is-future')+'">';
+      h+='<div class="cw-evt-body p--0.5 '+(past?'is-past':'is-future')+'">';
       h+='<div class="cw-evt-title">'+esc(ev.summary)+'</div>';
       // Show time for events 30min+, show location/description for events 60min+
       if(dur>=30) h+='<div class="cw-evt-time">'+esc(ev.start)+(ev.end?'-'+esc(ev.end):'')+'</div>';
@@ -559,9 +560,9 @@ document.addEventListener("DOMContentLoaded", function() {
   // --- ROW 5: Legend bar (calendar names left, weather info right) ---
   var hasExtra = sunrise||sunset||uvMax!==null||aqi!==null;
   if(allCalNames.length>1||hasExtra){
-    h+='<div class="cw-legend">';
+    h+='<div class="cw-legend py--1 px--1.5">';
     // Calendar legend: colored swatches + names
-    for(var l=0;l<allCalNames.length;l++){var idx=calNameMap[allCalNames[l]];h+='<span class="cw-legend-item"><span class="cw-legend-swatch cw-bar-'+idx+'"></span><span>'+esc(allCalNames[l])+'</span></span>';}
+    for(var l=0;l<allCalNames.length;l++){var idx=calNameMap[allCalNames[l]];h+='<span class="cw-legend-item"><span class="cw-legend-swatch rounded--xsmall cw-bar-'+idx+'"></span><span>'+esc(allCalNames[l])+'</span></span>';}
     h+='<span style="flex:1"></span>';
     // Weather extras: sunrise, sunset, UV index, air quality
     var extras=[];
