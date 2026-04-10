@@ -26,7 +26,6 @@ A custom [TRMNL](https://usetrmnl.com) plugin that combines your **Google Calend
 
 - A **TRMNL device** (OG, 2-bit) with **Developer perks** enabled (comes with BYOD or Developer Edition)
 - **Google Calendar** connected to TRMNL
-- No API keys needed for weather (Open-Meteo is free)
 
 ## Setup
 
