@@ -1,8 +1,10 @@
 ---
 name: "Calendar + Weather"
-description: "Weekly calendar with weather forecast for Barcelona."
+description: "Weekly calendar with weather forecast, air quality, and sunrise/sunset. Combines Google Calendar events with Open-Meteo data on a time-grid layout optimized for 2-bit e-ink."
 polling_url: |
-  https://jsonplaceholder.typicode.com/posts/1
-  https://api.open-meteo.com/v1/forecast?latitude=41.39&longitude=2.17&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max,sunrise,sunset,uv_index_max&hourly=temperature_2m,precipitation_probability&current=temperature_2m&timezone=Europe/Madrid&forecast_days=7
-  https://air-quality-api.open-meteo.com/v1/air-quality?latitude=41.39&longitude=2.17&current=european_aqi&timezone=Europe/Madrid
+  https://usetrmnl.com/api/plugin_settings/{{ calendar_plugin_id }}/data
+  https://api.open-meteo.com/v1/forecast?latitude={{ latitude }}&longitude={{ longitude }}&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max,sunrise,sunset,uv_index_max&hourly=temperature_2m,precipitation_probability&current=temperature_2m&timezone={{ timezone }}&forecast_days=7
+  https://air-quality-api.open-meteo.com/v1/air-quality?latitude={{ latitude }}&longitude={{ longitude }}&current=european_aqi&timezone={{ timezone }}
 polling_verb: GET
+polling_headers: |
+  authorization=bearer {{ trmnl_api_key }}

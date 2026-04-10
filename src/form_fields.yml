@@ -1,0 +1,53 @@
+- keyname: author_bio
+  name: Calendar + Weather
+  field_type: author_bio
+  email_address: guplem@gmail.com
+  category: calendar,environment
+  github_url: https://github.com/guplem/trmnl-cal-weather
+  learn_more_url: https://github.com/guplem/trmnl-cal-weather#readme
+
+- keyname: trmnl_api_key
+  name: TRMNL API Key
+  field_type: password
+  description: "Your personal API key from <a href='https://trmnl.com/account' target='_blank'>trmnl.com/account</a>. Needed to read your calendar data."
+  help_text: "This is kept private and only used to poll your own calendar plugin"
+  placeholder: "user_..."
+  group: Calendar
+
+- keyname: calendar_plugin_id
+  name: Google Calendar Plugin ID
+  field_type: string
+  description: "Your Google Calendar plugin_setting_id. Find it in the URL when editing your Google Calendar plugin: <code>usetrmnl.com/plugin_settings/<b>12345</b>/edit</code>"
+  help_text: "The numeric ID, not the full URL"
+  placeholder: "12345"
+  group: Calendar
+
+- keyname: latitude
+  name: Latitude
+  field_type: string
+  description: "Your location's latitude. Find it at <a href='https://open-meteo.com/en/docs' target='_blank'>open-meteo.com</a>"
+  placeholder: "41.39"
+  group: Location
+
+- keyname: longitude
+  name: Longitude
+  field_type: string
+  description: "Your location's longitude"
+  placeholder: "2.17"
+  group: Location
+
+- keyname: timezone
+  name: Timezone
+  field_type: time_zone
+  description: "Your local timezone (must match your TRMNL timezone)"
+  group: Location
+
+- keyname: enable_aqi
+  name: Include Air Quality Index?
+  field_type: select
+  options:
+    - "yes"
+    - "no"
+  default: "yes"
+  description: "Show European Air Quality Index (AQI) in the bottom legend"
+  group: Options
