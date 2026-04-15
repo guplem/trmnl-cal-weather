@@ -17,7 +17,7 @@
 - keyname: calendar_plugin_id
   name: Google Calendar Plugin ID
   field_type: string
-  description: "Your Google Calendar plugin_setting_id. Find it in the URL when editing your Google Calendar plugin: <code>usetrmnl.com/plugin_settings/<b>12345</b>/edit</code>"
+  description: "Your Google Calendar plugin_setting_id. Find it in the URL when editing your Google Calendar plugin: <code>usetrmnl.com/plugin_settings/<b>12345</b>/edit</code>. More info <a href='https://github.com/guplem/trmnl-cal-weather?tab=readme-ov-file#step-1-connect-google-calendar' target='_blank'>here</a>."
   help_text: "The numeric ID, not the full URL"
   placeholder: "12345"
   group: Calendar
