@@ -175,4 +175,6 @@ TRMNL Polling (every ~15 min)
 
 The plugin includes a **built-in diagnostic overlay** that appears on-screen when data issues are detected (e.g., missing calendar data, unexpected format, empty events). This makes it easier to identify problems without needing browser access.
 
-If calendar events are not showing up, verify that the Google Calendar plugin ID is correct and that the Google Calendar plugin is set to "Week" layout. The plugin includes a built-in diagnostic overlay that appears on-screen when data issues are detected. For detailed debugging steps, including how to inspect raw API data from the browser console, see **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)**.
+After any configuration change, **save the plugin** (top right) and click **Force Refresh** to generate a new preview image. Some changes take time to propagate, especially Google Calendar updates.
+
+For detailed debugging steps, see **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)**.

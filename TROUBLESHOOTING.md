@@ -1,22 +1,22 @@
 # Troubleshooting
 
-This guide helps debug common issues with the Calendar + Weather plugin, especially when calendar events are not showing up.
+This guide helps debug common issues with the Calendar + Weather plugin **deployed on [trmnl.com](https://trmnl.com)**. It covers the three data sources: Google Calendar, Weather, and Air Quality. For local development with trmnlp, refer to the [Local development section in README.md](README.md#local-development).
 
-## Known Issues
+## How to test changes
 
-### Double JSON Encoding
+After making any configuration change described below:
 
-The most common cause of "no calendar data" is **double JSON encoding**. When TRMNL polls the calendar API and stores the response, it may store it as a JSON string rather than a parsed object. When the Liquid template renders `{{ IDX_0 | json }}`, this produces a string-inside-a-string that needs two rounds of `JSON.parse` to unwrap.
+1. **Save the plugin** using the button in the top right of the edit page
+2. Click **Force Refresh** to trigger a new data poll and generate a fresh preview image
+3. Check the **preview image** on the plugin page to verify the fix
 
-The plugin handles this automatically (it retries parsing if the first result is a string), but if you see the diagnostic overlay mentioning "Type after parse: string", this is the cause.
+Some changes take time to propagate, especially updates to the Google Calendar app (selecting calendars, changing layout, reconnecting your Google account). If the preview still looks wrong, wait a few minutes and Force Refresh again.
 
-### Nested API Response Wrapper
+To see the updated image on your **physical TRMNL display**, you need to wait until its next scheduled refresh cycle. Force Refresh only regenerates the server-side preview.
 
-Some TRMNL API responses wrap the calendar data in an extra object (e.g., `{ "plugin_setting": { "data": { "events": [...] } } }`). The plugin searches one level deep for the expected `data.events` structure, but deeper nesting would still fail.
+## Diagnostic overlay
 
-## Quick Diagnostic: On-Screen Error Overlay
-
-The plugin includes a built-in diagnostic overlay. When something goes wrong with the data, a black-bordered message box will appear on the display with details about what failed. Common messages:
+The plugin includes a built-in diagnostic overlay that appears directly on the rendered image when data issues are detected. A black-bordered message box will show details about what failed. Common messages:
 
 | Message | Meaning |
 |---------|---------|
@@ -24,13 +24,16 @@ The plugin includes a built-in diagnostic overlay. When something goes wrong wit
 | **Calendar: no data received** | IDX_0 (calendar polling URL) returned empty or unparseable data. |
 | **Calendar: unexpected format** | IDX_0 returned data but it doesn't contain the expected `events` array or `data.events` structure. |
 | **Calendar: data received but 0 events** | The calendar API responded correctly but the events array is empty. Check that the Google Calendar plugin has calendars selected and is set to "Week" layout. |
+| **Calendar: layout is "month"** | The Google Calendar plugin is set to Month (or Day) instead of Week. Change it to "Week". |
 | **Weather: no data received** | IDX_1 (weather polling URL) returned empty or unparseable data. Check the Open-Meteo URL for typos. |
 
 The overlay also shows the raw structure of the received data (truncated) to help identify format mismatches.
 
-## Step-by-Step Debugging
+---
 
-### 1. Verify the Google Calendar Plugin
+## Calendar not working
+
+### Check the Google Calendar plugin configuration
 
 1. Go to [trmnl.com](https://trmnl.com) > **Plugins**
 2. Find your **Google Calendar** plugin and open its settings
@@ -38,20 +41,38 @@ The overlay also shows the raw structure of the received data (truncated) to hel
    - Google account is connected (re-authorize if needed)
    - All desired calendars are **selected** (hold Ctrl/Cmd to multi-select)
    - Layout is set to **Week**
-4. Note the `plugin_setting_id` from the URL:
-   ```
-   https://usetrmnl.com/plugin_settings/12345/edit
-                                        ^^^^^
-   ```
+4. Save, then Force Refresh your private plugin
 
-### 2. Check the Raw Calendar Data in Browser Console
+### Layout must be "Week"
 
-This is the most important debugging step. It lets you see exactly what data the calendar API returns.
+The Google Calendar plugin **must** be set to "Week" layout. Other layouts return significantly more data:
 
-1. Open your browser and go to: `https://usetrmnl.com/api/plugin_settings/YOUR_CALENDAR_ID/data`
-   - Replace `YOUR_CALENDAR_ID` with the plugin_setting_id from Step 1
-2. You need to send an authenticated request. Open the browser's **Developer Tools** (F12) > **Console** tab
-3. Run this script (replace the two placeholders):
+- **Week**: ~7 days of events, typically 10-30 events
+- **Month**: ~6 weeks of events, easily 80-100+ events
+
+The plugin only displays 7 days, so the extra data is wasted. Worse, the larger payload can exceed TRMNL's template data injection limits, causing the JSON to be truncated mid-stream. This results in a parse error and no calendar data.
+
+If the diagnostic overlay says `layout is "month" (should be "week")`, or you see "Unexpected end of JSON input", change the layout to "Week".
+
+### Verify the Google Calendar plugin ID
+
+The first polling URL must point to the **Google Calendar** plugin's ID, not the private plugin's ID. Find it from the Google Calendar plugin's settings URL:
+
+```
+https://usetrmnl.com/plugin_settings/12345/edit
+                                     ^^^^^
+                                  this number
+```
+
+Your first polling URL should be: `https://usetrmnl.com/api/plugin_settings/12345/data`
+
+### Double JSON encoding
+
+Sometimes TRMNL stores the calendar API response as a JSON string rather than a parsed object, resulting in a string-inside-a-string. The plugin handles this automatically (it retries parsing if the first result is a string), but if the diagnostic overlay mentions "Type after parse: string", this is the cause and may indicate a deeper issue.
+
+### Inspect raw calendar data
+
+To see exactly what the calendar API returns, open your browser's **Developer Tools** (F12) > **Console** and run:
 
 ```javascript
 fetch('https://usetrmnl.com/api/plugin_settings/YOUR_CALENDAR_ID/data', {
@@ -60,8 +81,7 @@ fetch('https://usetrmnl.com/api/plugin_settings/YOUR_CALENDAR_ID/data', {
 .then(r => r.json())
 .then(data => {
   console.log('Full response:', JSON.stringify(data, null, 2));
-  
-  // Check structure
+
   const events = data?.data?.events || data?.events;
   if (!events) {
     console.error('No "events" found. Top-level keys:', Object.keys(data));
@@ -70,70 +90,102 @@ fetch('https://usetrmnl.com/api/plugin_settings/YOUR_CALENDAR_ID/data', {
     console.log('Events count:', events.length);
     if (events.length > 0) {
       console.log('First event sample:', JSON.stringify(events[0], null, 2));
-      console.log('Event fields:', Object.keys(events[0]));
     }
   }
-  
-  // Check calendar names
+
   const names = data?.data?.calendar_names || data?.calendar_names;
   console.log('Calendar names map:', names);
 })
 .catch(err => console.error('Fetch failed:', err));
 ```
 
-4. Replace `YOUR_CALENDAR_ID` with your Google Calendar plugin's setting ID
-5. Replace `YOUR_API_KEY` with your API key from [trmnl.com/account](https://trmnl.com/account)
+Replace `YOUR_CALENDAR_ID` with the Google Calendar plugin setting ID and `YOUR_API_KEY` with your key from [trmnl.com/account](https://trmnl.com/account).
 
 **What to look for:**
-- If the response is empty or an error, the API key or plugin ID is wrong
-- If `events` is an empty array `[]`, the Google Calendar plugin has no data (check calendar selection and layout)
-- If `events` exists with data, check that each event has `start_full`, `end_full`, `date_time`, `summary`, and `calname` fields
-- If the structure is different from expected (e.g., events are nested differently), the API format may have changed
+- Empty response or error: wrong API key or plugin ID
+- Empty `events` array `[]`: no calendars selected or wrong layout
+- Events missing `start_full`, `end_full`, or `date_time` fields: API format may have changed
 
-### 3. Check the Private Plugin Polling Configuration
+### Still no calendar data?
 
-1. Go to your **Calendar + Weather** private plugin settings
-2. Verify the **Polling URLs** (one per line):
-   - **Line 1**: `https://usetrmnl.com/api/plugin_settings/YOUR_CALENDAR_ID/data`
-   - **Line 2**: `https://api.open-meteo.com/v1/forecast?latitude=...&longitude=...` (weather)
-   - **Line 3** (optional): `https://air-quality-api.open-meteo.com/v1/air-quality?...` (AQI)
-3. Verify the **Polling Headers**: `authorization=bearer YOUR_API_KEY`
-4. Verify the **Polling Verb** is `GET`
+1. Try disconnecting and reconnecting your Google account in the Google Calendar plugin
+2. Create a test event on today's date to confirm data flows through
+3. Check if the issue is specific to certain calendars or all calendars
+4. Wait a few minutes after changes to the Google Calendar plugin, then Force Refresh
 
-**Common mistakes:**
-- Wrong `plugin_setting_id` in the calendar URL (using the private plugin's ID instead of the Google Calendar plugin's ID)
-- Missing or incorrect API key in headers
-- Extra spaces or line breaks in the URL
-- Using `Authorization` (capital A) instead of `authorization` (TRMNL headers are case-sensitive in some contexts)
+---
 
-### 4. Check the Weather Data
+## Weather not working
 
-Open this URL directly in your browser (no auth needed):
+### Check the Open-Meteo forecast URL
+
+Open your weather URL directly in a browser (no authentication needed):
 
 ```
 https://api.open-meteo.com/v1/forecast?latitude=YOUR_LAT&longitude=YOUR_LON&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max,sunrise,sunset,uv_index_max&hourly=temperature_2m,precipitation_probability&current=temperature_2m&timezone=YOUR_TIMEZONE&forecast_days=7
 ```
 
 You should see a JSON response with `daily`, `hourly`, and `current` objects. If not, check:
-- Latitude/longitude are valid numbers
-- Timezone is a valid IANA timezone (e.g., `Europe/Madrid`, `America/New_York`)
 
-### 5. Force Refresh and Wait
+- **Latitude/longitude** are valid numbers (e.g., `41.39` / `2.17` for Barcelona)
+- **Timezone** is a valid IANA timezone (e.g., `Europe/Madrid`, `America/New_York`)
+- No extra spaces or line breaks in the URL
 
-After making changes:
-1. Go to the private plugin's settings page
-2. Click **Force Refresh**
-3. Wait 30-60 seconds for the data to be polled
-4. Check if your TRMNL device updates (it may take another polling cycle)
+Find your coordinates at [open-meteo.com](https://open-meteo.com/en/docs).
 
-### 6. Check the Rendered Output
+### Verify it's the second polling URL
 
-If you have access to the TRMNL preview or the device's rendered HTML:
-1. Open Developer Tools (F12) > **Console**
-2. Look for any JavaScript errors
-3. Check the `#cw-container` element in the **Elements** tab to see what was rendered
+The weather URL must be the **second line** in your private plugin's polling URLs (it maps to IDX_1). If the order is wrong, the plugin will try to parse calendar data as weather and vice versa.
 
-## Data Format Reference
+---
+
+## Air quality not working
+
+### Check the Open-Meteo air quality URL
+
+Open your air quality URL directly in a browser (no authentication needed):
+
+```
+https://air-quality-api.open-meteo.com/v1/air-quality?latitude=YOUR_LAT&longitude=YOUR_LON&current=european_aqi&timezone=YOUR_TIMEZONE
+```
+
+You should see a JSON response with a `current` object containing `european_aqi`. If not, check:
+
+- The URL uses `air-quality-api.open-meteo.com`, not `api.open-meteo.com`
+- Latitude, longitude, and timezone match your weather URL
+
+### Air quality is optional
+
+If you don't need AQI data, you can remove the third polling URL entirely. The plugin works fine without it.
+
+### Verify it's the third polling URL
+
+The air quality URL must be the **third line** in your private plugin's polling URLs (it maps to IDX_2). The order of all three URLs matters.
+
+---
+
+## Polling configuration issues
+
+If none of the three data sources are working, the problem is likely in the private plugin's polling setup.
+
+### Check the polling configuration
+
+1. Go to your **Calendar + Weather** private plugin settings
+2. Verify:
+   - **Polling URLs** are one per line, in the correct order (calendar, weather, air quality)
+   - **Polling Verb** is `GET`
+   - **Polling Headers** contain `authorization=bearer YOUR_API_KEY`
+
+### Common mistakes
+
+- Wrong `plugin_setting_id` in the calendar URL (using the private plugin's ID instead of the Google Calendar plugin's ID)
+- Missing or incorrect API key in headers
+- Extra spaces or line breaks in URLs
+- Polling URLs in the wrong order (must be: calendar, weather, air quality)
+
+---
+
+## Data format reference
 
 The plugin expects this structure from the calendar API (IDX_0):
 
@@ -142,15 +194,12 @@ The plugin expects this structure from the calendar API (IDX_0):
   "data": {
     "events": [
       {
-        "summary": "Meeting title",
-        "start": "9:00 AM",
-        "end": "10:00 AM",
+        "summary": "Event Title",
         "start_full": "2026-04-17T09:00:00.000+02:00",
         "end_full": "2026-04-17T10:00:00.000+02:00",
         "date_time": "2026-04-17T09:00:00.000+02:00",
         "calname": "user@gmail.com",
         "all_day": false,
-        "summary": "Event Title",
         "description": "Optional description",
         "location": "Optional location"
       }
@@ -168,26 +217,7 @@ The plugin expects this structure from the calendar API (IDX_0):
 
 Key fields:
 - `events` can be at `data.events` (production) or at the top level
-- `start_full` / `end_full` are ISO timestamps with timezone offset (preferred for time parsing)
-- `date_time` is used to determine which date the event belongs to
+- `start_full` / `end_full` are ISO timestamps with timezone offset (used for time positioning)
+- `date_time` determines which date column the event belongs to
 - `all_day` boolean determines if the event goes in the all-day strip
 - `calname` contains an email address, mapped to a display name via `calendar_names`
-
-## Where to Find Logs
-
-TRMNL renders templates server-side (headless browser) and sends the resulting bitmap to the device. This means:
-
-- **JavaScript `console.log` is not visible** on the device or in the TRMNL web UI. The on-screen diagnostic overlay is the primary debugging tool.
-- **TRMNL web preview**: Some plugin pages have a "Preview" or rendered output section. Check if the diagnostic overlay is visible there.
-- **Polling status**: Check your private plugin's settings page for any polling error indicators. TRMNL may show if a polling URL returned an error status code.
-- **Browser DevTools on preview**: If TRMNL provides an HTML preview of your plugin, open it and use F12 > Console to see any JavaScript errors and F12 > Elements to inspect `#cw-container` for the actual rendered HTML.
-- **TRMNL support**: If you have access to the TRMNL admin/internal tools, check the polling logs for your plugin to see the raw HTTP response from each polling URL.
-
-## Still Not Working?
-
-If you've verified all the above and events still don't show:
-1. Try with a fresh Google Calendar plugin (disconnect and reconnect Google)
-2. Create a test event on today's date to confirm data flow
-3. Check if the issue is specific to certain calendars or all calendars
-4. Compare the raw API response structure with the format reference above
-5. Share a screenshot of the diagnostic overlay (if visible) with the plugin author
