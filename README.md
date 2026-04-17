@@ -175,14 +175,4 @@ TRMNL Polling (every ~15 min)
 
 The plugin includes a **built-in diagnostic overlay** that appears on-screen when data issues are detected (e.g., missing calendar data, unexpected format, empty events). This makes it easier to identify problems without needing browser access.
 
-| Problem | Solution |
-|---------|----------|
-| No events showing | Verify the calendar plugin_setting_id is correct. Check that the Google Calendar plugin is set to "Week" layout. |
-| Weather shows but no calendar | The calendar API might have changed format. Check the raw API response in browser console. |
-| All events same color bar | The `calname` field or `calendar_names` mapping might be missing. Check raw calendar data. |
-| Events on wrong days | Ensure the Open-Meteo timezone matches your TRMNL timezone. |
-| Screen not updating | TRMNL skips re-render if polled data is identical. Click "Force Refresh" after markup changes. |
-| White space at edges | The template overrides TRMNL framework padding. If it reappears, inspect which wrapper div needs `padding: 0 !important`. |
-| Colors look dithered | Only 4 native shades work on 2-bit: `#000`, `#555`, `#AAA`, `#fff`. All other values get Floyd-Steinberg dithered. |
-
-For detailed debugging steps, including how to inspect raw API data from the browser console, see **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)**.
+If calendar events are not showing up, verify that the Google Calendar plugin ID is correct and that the Google Calendar plugin is set to "Week" layout. The plugin includes a built-in diagnostic overlay that appears on-screen when data issues are detected. For detailed debugging steps, including how to inspect raw API data from the browser console, see **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)**.

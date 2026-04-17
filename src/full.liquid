@@ -266,17 +266,25 @@ document.addEventListener("DOMContentLoaded", function() {
   // Calendar diagnostics
   if (!calRaw) {
     var calDetail = calErr ? 'Parse error: ' + calErr : 'IDX_0 is empty or null. Check that the polling URL and API key are correct.';
-    if (calRawType === 'string') calDetail += ' Note: IDX_0 was a string (possible double-encoding). Raw type after first JSON.parse: string.';
+    if (calRawType === 'string') calDetail += ' Note: IDX_0 was a string (possible double-encoding).';
     diag.push({label: 'Calendar: no data received', detail: calDetail});
+  } else if (calRaw.error) {
+    // API returned an error object (e.g., {"error": "Plugin setting not found"})
+    var errMsg = calRaw.error;
+    var hint = '';
+    if (/not found/i.test(errMsg)) hint = 'The Google Calendar plugin ID is wrong. Open your Google Calendar plugin settings and copy the number from the URL: usetrmnl.com/plugin_settings/[THIS_NUMBER]/edit';
+    else if (/unauthorized|forbidden|auth/i.test(errMsg)) hint = 'The API key is invalid or expired. Go to trmnl.com/account and copy a fresh API key.';
+    else hint = 'Check the polling URL and API key in your plugin settings.';
+    diag.push({label: 'Calendar: API error', detail: errMsg + '. ' + hint});
   } else if (!hasCalData(calRaw)) {
     var keys = Object.keys(calRaw);
     var dataKeys = calRaw.data ? Object.keys(calRaw.data) : [];
-    diag.push({label: 'Calendar: unexpected format', detail: 'Received data but no "events" array found. Top-level keys: [' + keys.join(', ') + ']' + (dataKeys.length ? '. data.* keys: [' + dataKeys.join(', ') + ']' : '') + '. Type after parse: ' + calRawType, raw: rawPreview(calRaw)});
+    diag.push({label: 'Calendar: unexpected format', detail: 'Data received but no "events" array found. Top-level keys: [' + keys.join(', ') + ']' + (dataKeys.length ? '. data.* keys: [' + dataKeys.join(', ') + ']' : ''), raw: rawPreview(calRaw)});
   } else {
     var cd0 = calRaw.data || calRaw;
     var evts0 = cd0.events || [];
     if (Array.isArray(evts0) && evts0.length === 0) {
-      diag.push({label: 'Calendar: data received but 0 events', detail: 'The events array is empty. Verify the Google Calendar plugin has calendars selected and layout set to "Week".'});
+      diag.push({label: 'Calendar: 0 events', detail: 'The calendar responded but the events array is empty. Verify the Google Calendar plugin has calendars selected and layout set to "Week".'});
     }
   }
   // Weather diagnostics
