@@ -194,6 +194,18 @@
   .cw-legend-swatch { width: 6px; height: 12px; flex-shrink: 0; }
 
   .cw-empty { display: flex; align-items: center; height: 100%; font: 14px sans-serif; color: #555; }
+
+  /* === DIAGNOSTIC OVERLAY === */
+  .cw-diag-overlay {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 100; background: #fff; border: 3px solid #000;
+    max-width: 600px; width: 90%; max-height: 400px; overflow: auto;
+    font: 11px/1.4 monospace; color: #000;
+  }
+  .cw-diag-title { font: bold 14px sans-serif; background: #000; color: #fff; }
+  .cw-diag-item { border-bottom: 1px solid #AAA; }
+  .cw-diag-label { font-weight: bold; }
+  .cw-diag-raw { font: 9px/1.2 monospace; color: #555; word-break: break-all; max-height: 60px; overflow: hidden; }
 </style>
 
 <div id="cw-container" style="width: 100%; height: 100%;"></div>
@@ -202,18 +214,99 @@
 document.addEventListener("DOMContentLoaded", function() {
   // Parse data: TRMNL production uses IDX_0/IDX_1, trmnlp uses custom_fields (Ruby hash format)
   function parseLiquid(str) { return JSON.parse(str.replace(/ => /g, ': ')); }
-  function hasCalData(obj) { return obj && ((obj.data && obj.data.events) || obj.events); }
-  var calRaw, weatherRaw;
+  function hasCalData(obj) { return obj && typeof obj === 'object' && ((obj.data && obj.data.events) || obj.events); }
+  // Deep-parse: handles double-encoded JSON (string inside string) and unwraps nested objects
+  function deepParse(raw) {
+    if (raw == null) return null;
+    // If first parse returned a string, try parsing it again (double-encoded JSON)
+    if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch(e) { return null; } }
+    if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch(e) { return null; } } // triple-encoded edge case
+    if (typeof raw !== 'object' || raw === null) return null;
+    // If data is at expected path, return as-is
+    if (hasCalData(raw)) return raw;
+    // Search one level deeper for a wrapper (e.g., { "plugin_setting": { "data": { "events": [...] } } })
+    var keys = Object.keys(raw);
+    for (var i = 0; i < keys.length; i++) {
+      var child = raw[keys[i]];
+      if (child && typeof child === 'object' && hasCalData(child)) return child;
+    }
+    return raw; // return whatever we have; diagnostics will flag it if still bad
+  }
+  function deepParseWeather(raw) {
+    if (raw == null) return null;
+    if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch(e) { return null; } }
+    if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch(e) { return null; } }
+    if (typeof raw !== 'object' || raw === null) return null;
+    if (raw.daily) return raw;
+    var keys = Object.keys(raw);
+    for (var i = 0; i < keys.length; i++) {
+      var child = raw[keys[i]];
+      if (child && typeof child === 'object' && child.daily) return child;
+    }
+    return raw;
+  }
+  var calRaw, weatherRaw, diag = [];
   // Calendar: try IDX_0 (production), then custom_fields (trmnlp)
-  try { calRaw = JSON.parse(`{{ IDX_0 | json }}`); } catch(e) { calRaw = null; }
-  if (!hasCalData(calRaw)) { try { calRaw = parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_0 }}`); } catch(e) { calRaw = null; } }
+  var calErr = null, calRawType = '';
+  try {
+    var calParsed = JSON.parse(`{{ IDX_0 | json }}`);
+    calRawType = typeof calParsed;
+    calRaw = deepParse(calParsed);
+  } catch(e) { calRaw = null; calErr = e.message; }
+  if (!hasCalData(calRaw)) { try { calRaw = deepParse(parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_0 }}`)); calErr = null; } catch(e) { if (!calErr) calErr = e.message; } }
   // Weather: try IDX_1 (production + trmnlp polling), then custom_fields
-  try { weatherRaw = JSON.parse(`{{ IDX_1 | json }}`); } catch(e) { weatherRaw = null; }
-  if (!weatherRaw || !weatherRaw.daily) { try { weatherRaw = parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_1 }}`); } catch(e) { weatherRaw = null; } }
+  var wxErr = null;
+  try { weatherRaw = deepParseWeather(JSON.parse(`{{ IDX_1 | json }}`)); } catch(e) { weatherRaw = null; wxErr = e.message; }
+  if (!weatherRaw || !weatherRaw.daily) { try { weatherRaw = deepParseWeather(parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_1 }}`)); wxErr = null; } catch(e) { if (!wxErr) wxErr = e.message; } }
+
+  // === DIAGNOSTICS: collect issues for on-screen overlay ===
+  function truncate(s, n) { return s.length > n ? s.substring(0, n) + '...' : s; }
+  function rawPreview(obj) { try { return truncate(JSON.stringify(obj), 200); } catch(e) { return String(obj).substring(0, 200); } }
+
+  // Calendar diagnostics
+  if (!calRaw) {
+    var calDetail = calErr ? 'Parse error: ' + calErr : 'IDX_0 is empty or null. Check that the polling URL and API key are correct.';
+    if (calRawType === 'string') calDetail += ' Note: IDX_0 was a string (possible double-encoding). Raw type after first JSON.parse: string.';
+    diag.push({label: 'Calendar: no data received', detail: calDetail});
+  } else if (!hasCalData(calRaw)) {
+    var keys = Object.keys(calRaw);
+    var dataKeys = calRaw.data ? Object.keys(calRaw.data) : [];
+    diag.push({label: 'Calendar: unexpected format', detail: 'Received data but no "events" array found. Top-level keys: [' + keys.join(', ') + ']' + (dataKeys.length ? '. data.* keys: [' + dataKeys.join(', ') + ']' : '') + '. Type after parse: ' + calRawType, raw: rawPreview(calRaw)});
+  } else {
+    var cd0 = calRaw.data || calRaw;
+    var evts0 = cd0.events || [];
+    if (Array.isArray(evts0) && evts0.length === 0) {
+      diag.push({label: 'Calendar: data received but 0 events', detail: 'The events array is empty. Verify the Google Calendar plugin has calendars selected and layout set to "Week".'});
+    }
+  }
+  // Weather diagnostics
+  if (!weatherRaw) {
+    diag.push({label: 'Weather: no data received', detail: wxErr ? 'Parse error: ' + wxErr : 'IDX_1 is empty or null. Check the Open-Meteo URL.'});
+  } else if (!weatherRaw.daily) {
+    diag.push({label: 'Weather: unexpected format', detail: 'Received data but no "daily" object. Keys: [' + Object.keys(weatherRaw).join(', ') + ']', raw: rawPreview(weatherRaw)});
+  }
 
   var container = document.getElementById("cw-container");
   var hasWeather = !!(weatherRaw && weatherRaw.daily);
-  if (!hasWeather && !hasCalData(calRaw)) { container.innerHTML = '<div class="cw-empty">No data available</div>'; return; }
+  // Render diagnostic overlay if issues detected
+  function renderDiag() {
+    if (diag.length === 0) return '';
+    var d = '<div class="cw-diag-overlay"><div class="cw-diag-title p--1">Diagnostic Info</div>';
+    for (var i = 0; i < diag.length; i++) {
+      d += '<div class="cw-diag-item p--1"><div class="cw-diag-label">' + diag[i].label + '</div>';
+      d += '<div>' + diag[i].detail + '</div>';
+      if (diag[i].raw) d += '<div class="cw-diag-raw">Raw: ' + diag[i].raw + '</div>';
+      d += '</div>';
+    }
+    d += '</div>';
+    return d;
+  }
+
+  if (!hasWeather && !hasCalData(calRaw)) {
+    container.style.position = 'relative';
+    container.innerHTML = '<div class="cw-empty">No data available</div>' + renderDiag();
+    return;
+  }
 
   // === PARSE CALENDAR DATA ===
   var eventsByDate = {}, todayStr = "", calFriendlyNames = {}, firstDayOfWeek = 1;
@@ -577,6 +670,8 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   h+='</div>';
+  // Append diagnostic overlay if any issues were detected (shown on top of content)
+  if (diag.length > 0) { container.style.position = 'relative'; h += renderDiag(); }
   container.innerHTML=h;
 });
 </script>

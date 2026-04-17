@@ -173,6 +173,8 @@ TRMNL Polling (every ~15 min)
 
 ## Troubleshooting
 
+The plugin includes a **built-in diagnostic overlay** that appears on-screen when data issues are detected (e.g., missing calendar data, unexpected format, empty events). This makes it easier to identify problems without needing browser access.
+
 | Problem | Solution |
 |---------|----------|
 | No events showing | Verify the calendar plugin_setting_id is correct. Check that the Google Calendar plugin is set to "Week" layout. |
@@ -182,3 +184,5 @@ TRMNL Polling (every ~15 min)
 | Screen not updating | TRMNL skips re-render if polled data is identical. Click "Force Refresh" after markup changes. |
 | White space at edges | The template overrides TRMNL framework padding. If it reappears, inspect which wrapper div needs `padding: 0 !important`. |
 | Colors look dithered | Only 4 native shades work on 2-bit: `#000`, `#555`, `#AAA`, `#fff`. All other values get Floyd-Steinberg dithered. |
+
+For detailed debugging steps, including how to inspect raw API data from the browser console, see **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)**.
