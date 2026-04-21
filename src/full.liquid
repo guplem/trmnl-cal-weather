@@ -213,14 +213,26 @@
 <script>
 document.addEventListener("DOMContentLoaded", function() {
   // Parse data: TRMNL production uses IDX_0/IDX_1, trmnlp uses custom_fields (Ruby hash format)
-  function parseLiquid(str) { return JSON.parse(str.replace(/ => /g, ': ')); }
+  // Sanitize raw JSON strings: escape control characters that break JSON.parse
+  // (e.g., literal newlines/tabs in calendar event descriptions or locations)
+  function sanitizeJson(s) {
+    return s.replace(/[\x00-\x1f\x7f]/g, function(c) {
+      switch(c) {
+        case '\n': return '\\n';
+        case '\r': return '\\r';
+        case '\t': return '\\t';
+        default: return '';
+      }
+    });
+  }
+  function parseLiquid(str) { return JSON.parse(sanitizeJson(str.replace(/ => /g, ': '))); }
   function hasCalData(obj) { return obj && typeof obj === 'object' && ((obj.data && obj.data.events) || obj.events); }
   // Deep-parse: handles double-encoded JSON (string inside string) and unwraps nested objects
   function deepParse(raw) {
     if (raw == null) return null;
     // If first parse returned a string, try parsing it again (double-encoded JSON)
-    if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch(e) { return null; } }
-    if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch(e) { return null; } } // triple-encoded edge case
+    if (typeof raw === 'string') { try { raw = JSON.parse(sanitizeJson(raw)); } catch(e) { return null; } }
+    if (typeof raw === 'string') { try { raw = JSON.parse(sanitizeJson(raw)); } catch(e) { return null; } } // triple-encoded edge case
     if (typeof raw !== 'object' || raw === null) return null;
     // If data is at expected path, return as-is
     if (hasCalData(raw)) return raw;
@@ -234,8 +246,8 @@ document.addEventListener("DOMContentLoaded", function() {
   }
   function deepParseWeather(raw) {
     if (raw == null) return null;
-    if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch(e) { return null; } }
-    if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch(e) { return null; } }
+    if (typeof raw === 'string') { try { raw = JSON.parse(sanitizeJson(raw)); } catch(e) { return null; } }
+    if (typeof raw === 'string') { try { raw = JSON.parse(sanitizeJson(raw)); } catch(e) { return null; } }
     if (typeof raw !== 'object' || raw === null) return null;
     if (raw.daily) return raw;
     var keys = Object.keys(raw);
@@ -249,14 +261,14 @@ document.addEventListener("DOMContentLoaded", function() {
   // Calendar: try IDX_0 (production), then custom_fields (trmnlp)
   var calErr = null, calRawType = '';
   try {
-    var calParsed = JSON.parse(`{{ IDX_0 | json }}`);
+    var calParsed = JSON.parse(sanitizeJson(`{{ IDX_0 | json }}`));
     calRawType = typeof calParsed;
     calRaw = deepParse(calParsed);
   } catch(e) { calRaw = null; calErr = e.message; }
   if (!hasCalData(calRaw)) { try { calRaw = deepParse(parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_0 }}`)); calErr = null; } catch(e) { if (!calErr) calErr = e.message; } }
   // Weather: try IDX_1 (production + trmnlp polling), then custom_fields
   var wxErr = null;
-  try { weatherRaw = deepParseWeather(JSON.parse(`{{ IDX_1 | json }}`)); } catch(e) { weatherRaw = null; wxErr = e.message; }
+  try { weatherRaw = deepParseWeather(JSON.parse(sanitizeJson(`{{ IDX_1 | json }}`))); } catch(e) { weatherRaw = null; wxErr = e.message; }
   if (!weatherRaw || !weatherRaw.daily) { try { weatherRaw = deepParseWeather(parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_1 }}`)); wxErr = null; } catch(e) { if (!wxErr) wxErr = e.message; } }
 
   // === DIAGNOSTICS: collect issues for on-screen overlay ===
@@ -376,7 +388,7 @@ document.addEventListener("DOMContentLoaded", function() {
   var sunset = (daily.sunset && daily.sunset[0]) ? daily.sunset[0].substring(11,16) : null;
   var uvMax = (daily.uv_index_max && daily.uv_index_max[0] != null) ? Math.round(daily.uv_index_max[0]) : null;
   var aqi = null;
-  try { var aqRaw = JSON.parse(`{{ IDX_2 | json }}`); if(aqRaw && aqRaw.current) aqi = Math.round(aqRaw.current.european_aqi); } catch(e) {}
+  try { var aqRaw = JSON.parse(sanitizeJson(`{{ IDX_2 | json }}`)); if(aqRaw && aqRaw.current) aqi = Math.round(aqRaw.current.european_aqi); } catch(e) {}
   if (aqi===null) { try { var aqRaw2 = parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_2 }}`); if(aqRaw2 && aqRaw2.current) aqi = Math.round(aqRaw2.current.european_aqi); } catch(e) {} }
 
   // If no weather dates, derive from calendar events
