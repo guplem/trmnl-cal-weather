@@ -35,7 +35,7 @@ A custom [TRMNL](https://usetrmnl.com) plugin that combines your **Google Calend
 2. Go to **Plugins** > search **Google Calendar** > **Add**
 3. Follow the Google OAuth flow to connect your account
 4. **Select all calendars** you want to display (hold Ctrl/Cmd to multi-select)
-5. Set the layout to **Week**
+5. Set the layout to **Week** (recommended - see [why](#why-week-layout))
 6. Save
 
 After saving, note the **plugin_setting_id** from the URL:
@@ -170,6 +170,10 @@ TRMNL Polling (every ~15 min)
 - **Calendar:** TRMNL's parsed Google Calendar data (handles OAuth, sync, timezone)
 - **Weather:** [Open-Meteo](https://open-meteo.com) free forecast API (no key, no registration)
 - **Air Quality:** [Open-Meteo Air Quality API](https://open-meteo.com/en/docs/air-quality-api) (European AQI, optional)
+
+## Why "Week" layout?
+
+The plugin displays 7 days regardless of which Google Calendar layout you choose. "Month" or "Day" layouts work but return significantly more data (a month view can include 80-100+ events across 6 weeks). Since TRMNL has a data size limit for plugin payloads, larger responses risk being truncated mid-stream, which causes the calendar to fail silently. "Week" keeps the payload small and avoids this issue.
 
 ## Troubleshooting
 

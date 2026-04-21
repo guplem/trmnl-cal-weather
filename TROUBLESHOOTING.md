@@ -21,11 +21,14 @@ The plugin includes a built-in diagnostic overlay that appears directly on the r
 | Message | Meaning |
 |---------|---------|
 | **No data received** | Neither calendar nor weather data was received. The polling URLs may be misconfigured or the API key may be wrong. |
-| **Calendar: no data received** | IDX_0 (calendar polling URL) returned empty or unparseable data. |
+| **Calendar: no data received** | IDX_0 (calendar polling URL) returned empty data. The polling URL or API key may be misconfigured. |
+| **Calendar: bad data received** | IDX_0 returned data but it could not be parsed as valid JSON. |
+| **Calendar: data truncated** | The calendar JSON was cut off mid-stream because TRMNL's data size limit was exceeded. Reduce the number of selected calendars or switch the Google Calendar plugin layout to "Week". |
 | **Calendar: unexpected format** | IDX_0 returned data but it doesn't contain the expected `events` array or `data.events` structure. |
-| **Calendar: data received but 0 events** | The calendar API responded correctly but the events array is empty. Check that the Google Calendar plugin has calendars selected and is set to "Week" layout. |
-| **Calendar: layout is "month"** | The Google Calendar plugin is set to Month (or Day) instead of Week. Change it to "Week". |
-| **Weather: no data received** | IDX_1 (weather polling URL) returned empty or unparseable data. Check the Open-Meteo URL for typos. |
+| **Calendar: data received but 0 events** | The calendar API responded correctly but the events array is empty. Check that the Google Calendar plugin has calendars selected. |
+| **Weather: no data received** | IDX_1 (weather polling URL) returned empty data. Check the Open-Meteo URL for typos. |
+| **Weather: bad data received** | IDX_1 returned data but it could not be parsed as valid JSON. |
+| **Weather: data truncated** | The weather JSON was cut off mid-stream because TRMNL's data size limit was exceeded. |
 
 The overlay also shows the raw structure of the received data (truncated) to help identify format mismatches.
 
@@ -40,19 +43,17 @@ The overlay also shows the raw structure of the received data (truncated) to hel
 3. Confirm:
    - Google account is connected (re-authorize if needed)
    - All desired calendars are **selected** (hold Ctrl/Cmd to multi-select)
-   - Layout is set to **Week**
+   - Layout is set to **Week** (recommended to avoid data truncation)
 4. Save, then Force Refresh your private plugin
 
-### Layout must be "Week"
+### "Week" layout is recommended
 
-The Google Calendar plugin **must** be set to "Week" layout. Other layouts return significantly more data:
+The plugin only displays 7 days, so "Week" is the most efficient layout. Other layouts work but return more data:
 
 - **Week**: ~7 days of events, typically 10-30 events
 - **Month**: ~6 weeks of events, easily 80-100+ events
 
-The plugin only displays 7 days, so the extra data is wasted. Worse, the larger payload can exceed TRMNL's template data injection limits, causing the JSON to be truncated mid-stream. This results in a parse error and no calendar data.
-
-If the diagnostic overlay says `layout is "month" (should be "week")`, or you see "Unexpected end of JSON input", change the layout to "Week".
+The larger payload from "Month" or "Day" can exceed TRMNL's template data size limit, causing the JSON to be truncated mid-stream. If the diagnostic overlay shows "Calendar: data truncated", switch the layout to "Week" or reduce the number of selected calendars.
 
 ### Verify the Google Calendar plugin ID
 
