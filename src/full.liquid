@@ -280,10 +280,12 @@ document.addEventListener("DOMContentLoaded", function() {
   if (!calRaw) {
     if (isTruncationError(calErr)) {
       diag.push({label: 'Calendar: data truncated', detail: 'The calendar JSON was cut off mid-stream, which means TRMNL\'s data size limit was exceeded. Reduce the number of selected calendars or switch the Google Calendar plugin layout to "Week".'});
-    } else {
-      var calDetail = calErr ? 'Parse error: ' + calErr : 'IDX_0 is empty or null. Check that the polling URL and API key are correct.';
+    } else if (calErr) {
+      var calDetail = 'Parse error: ' + calErr;
       if (calRawType === 'string') calDetail += ' Note: IDX_0 was a string (possible double-encoding).';
-      diag.push({label: 'Calendar: no data received', detail: calDetail});
+      diag.push({label: 'Calendar: bad data received', detail: calDetail});
+    } else {
+      diag.push({label: 'Calendar: no data received', detail: 'IDX_0 is empty or null. Check that the polling URL and API key are correct.'});
     }
   } else if (calRaw.error) {
     // API returned an error object (e.g., {"error": "Plugin setting not found"})
@@ -307,8 +309,10 @@ document.addEventListener("DOMContentLoaded", function() {
   // Weather diagnostics
   if (!weatherRaw && isTruncationError(wxErr)) {
     diag.push({label: 'Weather: data truncated', detail: 'The weather JSON was cut off mid-stream, which means TRMNL\'s data size limit was exceeded. Check the Open-Meteo polling URL.'});
+  } else if (!weatherRaw && wxErr) {
+    diag.push({label: 'Weather: bad data received', detail: 'Parse error: ' + wxErr});
   } else if (!weatherRaw) {
-    diag.push({label: 'Weather: no data received', detail: wxErr ? 'Parse error: ' + wxErr : 'IDX_1 is empty or null. Check the Open-Meteo URL.'});
+    diag.push({label: 'Weather: no data received', detail: 'IDX_1 is empty or null. Check the Open-Meteo URL.'});
   } else if (!weatherRaw.daily) {
     diag.push({label: 'Weather: unexpected format', detail: 'Received data but no "daily" object. Keys: [' + Object.keys(weatherRaw).join(', ') + ']', raw: rawPreview(weatherRaw)});
   }
