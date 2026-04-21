@@ -299,11 +299,6 @@ document.addEventListener("DOMContentLoaded", function() {
     if (Array.isArray(evts0) && evts0.length === 0) {
       diag.push({label: 'Calendar: 0 events', detail: 'The calendar responded but the events array is empty. Verify the Google Calendar plugin has calendars selected and layout set to "Week".'});
     }
-    // Warn if calendar is not set to Week layout
-    var layout = cd0.event_layout || '';
-    if (layout && layout !== 'week') {
-      diag.push({label: 'Calendar: layout is "' + layout + '" (should be "week")', detail: 'This plugin is designed for the Week layout. Other layouts (Month, Day) return too much data and may fail. Change the Google Calendar plugin layout to "Week".'});
-    }
   }
   // Weather diagnostics
   if (!weatherRaw) {
