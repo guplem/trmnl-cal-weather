@@ -41,3 +41,10 @@
   field_type: time_zone
   description: "Your local timezone (must match your TRMNL timezone)"
   group: Location
+
+- keyname: show_render_time
+  name: Show render time
+  field_type: boolean
+  description: "Display the render time in the bottom bar"
+  default_value: "false"
+  group: Display

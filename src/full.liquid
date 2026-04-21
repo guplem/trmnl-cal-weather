@@ -212,6 +212,9 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
+  // === CONFIG (from plugin form fields) ===
+  var SHOW_RENDER_TIME = `{{ trmnl.plugin_settings.custom_fields_values.show_render_time }}` === 'true';
+
   // Parse data: TRMNL production uses IDX_0/IDX_1, trmnlp uses custom_fields (Ruby hash format)
   // Sanitize raw JSON strings: escape control characters that break JSON.parse
   // (e.g., literal newlines/tabs in calendar event descriptions or locations)
@@ -700,8 +703,10 @@ document.addEventListener("DOMContentLoaded", function() {
     for(var l=0;l<allCalNames.length;l++){var idx=calNameMap[allCalNames[l]];h+='<span class="cw-legend-item"><span class="cw-legend-swatch rounded--xsmall cw-bar-'+idx+'"></span><span>'+esc(allCalNames[l])+'</span></span>';}
     h+='<span style="flex:1"></span>';
     // Rendered time in user's timezone
-    h+='<span style="color:#AAA;background:#fff;border:1px solid #AAA;border-radius:8px;padding:0 5px;font:8px sans-serif;">'+fmtT(nowMin)+'</span>';
-    h+='<span style="flex:1"></span>';
+    if (SHOW_RENDER_TIME) {
+      h+='<span style="color:#AAA;background:#fff;border:1px solid #AAA;border-radius:8px;padding:0 5px;font:8px sans-serif;">'+fmtT(nowMin)+'</span>';
+      h+='<span style="flex:1"></span>';
+    }
     // Weather extras: sunrise, sunset, UV index, air quality
     var extras=[];
     var sunSvg='<svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="#555" stroke-width="1.5" style="vertical-align:middle"><circle cx="8" cy="8" r="3"/><line x1="8" y1="1" x2="8" y2="3.5"/><line x1="8" y1="12.5" x2="8" y2="15"/><line x1="3" y1="3" x2="4.8" y2="4.8"/><line x1="11.2" y1="11.2" x2="13" y2="13"/><line x1="1" y1="8" x2="3.5" y2="8"/><line x1="12.5" y1="8" x2="15" y2="8"/><line x1="3" y1="13" x2="4.8" y2="11.2"/><line x1="11.2" y1="4.8" x2="13" y2="3"/></svg>';
