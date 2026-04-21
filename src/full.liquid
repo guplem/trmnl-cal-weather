@@ -501,17 +501,28 @@ document.addEventListener("DOMContentLoaded", function() {
   var hasAD=false;
   for(var d in adByDate){if(adByDate[d].length>0){hasAD=true;break;}}
 
-  // Use calendar's now_in_tz (user's timezone) if available, otherwise fall back to JS Date (server time)
+  // Determine current time in user's timezone. Priority:
+  // 1. Calendar API's now_in_tz field (exact user timezone, set at render time)
+  // 2. Weather API's utc_offset_seconds applied to Date.now() (render-time clock, correct timezone)
+  // 3. JS Date (server time - last resort, likely wrong timezone)
+  // Note: weatherRaw.current.time is NOT used because it reflects poll time, not render time.
+  // Determine current time in user's timezone.
+  // now_in_tz from the calendar API is stale (set at poll time, not render time).
+  // Instead, use utc_offset_seconds from the weather API to convert render-time Date.now().
   var now=new Date();
   var nowMin=now.getHours()*60+now.getMinutes();
-  if (calRaw) {
-    var cd2 = calRaw.data || calRaw;
-    var nowTz = cd2.now_in_tz || "";
-    if (nowTz.length >= 16) {
-      nowMin = parseInt(nowTz.substring(11,13))*60 + parseInt(nowTz.substring(14,16));
-    }
+  if (weatherRaw && weatherRaw.utc_offset_seconds != null) {
+    var local = new Date(now.getTime() + weatherRaw.utc_offset_seconds*1000 + now.getTimezoneOffset()*60000);
+    nowMin = local.getHours()*60 + local.getMinutes();
   }
-  var todayIso=todayStr||(now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0"));
+  // Resolve today's date using the same timezone-corrected time
+  var todayIso=todayStr||"";
+  if (!todayIso) {
+    var todayDate = (weatherRaw && weatherRaw.utc_offset_seconds != null)
+      ? new Date(now.getTime() + weatherRaw.utc_offset_seconds*1000 + now.getTimezoneOffset()*60000)
+      : now;
+    todayIso = todayDate.getFullYear()+"-"+String(todayDate.getMonth()+1).padStart(2,"0")+"-"+String(todayDate.getDate()).padStart(2,"0");
+  }
 
   function isPast(dIso,em){return dIso<todayIso||(dIso===todayIso&&em<=nowMin);}
 
@@ -687,6 +698,9 @@ document.addEventListener("DOMContentLoaded", function() {
     h+='<div class="cw-legend py--1 px--1.5">';
     // Calendar legend: colored swatches + names
     for(var l=0;l<allCalNames.length;l++){var idx=calNameMap[allCalNames[l]];h+='<span class="cw-legend-item"><span class="cw-legend-swatch rounded--xsmall cw-bar-'+idx+'"></span><span>'+esc(allCalNames[l])+'</span></span>';}
+    h+='<span style="flex:1"></span>';
+    // Debug: rendered time in user's timezone
+    h+='<span style="color:#AAA;background:#fff;border:1px solid #AAA;border-radius:8px;padding:0 5px;font:8px sans-serif;">'+fmtT(nowMin)+'</span>';
     h+='<span style="flex:1"></span>';
     // Weather extras: sunrise, sunset, UV index, air quality
     var extras=[];
