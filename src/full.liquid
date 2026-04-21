@@ -699,7 +699,7 @@ document.addEventListener("DOMContentLoaded", function() {
     // Calendar legend: colored swatches + names
     for(var l=0;l<allCalNames.length;l++){var idx=calNameMap[allCalNames[l]];h+='<span class="cw-legend-item"><span class="cw-legend-swatch rounded--xsmall cw-bar-'+idx+'"></span><span>'+esc(allCalNames[l])+'</span></span>';}
     h+='<span style="flex:1"></span>';
-    // Debug: rendered time in user's timezone
+    // Rendered time in user's timezone
     h+='<span style="color:#AAA;background:#fff;border:1px solid #AAA;border-radius:8px;padding:0 5px;font:8px sans-serif;">'+fmtT(nowMin)+'</span>';
     h+='<span style="flex:1"></span>';
     // Weather extras: sunrise, sunset, UV index, air quality
