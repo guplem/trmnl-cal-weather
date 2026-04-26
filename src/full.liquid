@@ -693,7 +693,7 @@ document.addEventListener("DOMContentLoaded", function() {
     h+='<span style="flex:1"></span>';
     // Rendered time in user's timezone
     if (SHOW_RENDER_TIME) {
-      h+='<span style="color:#AAA;background:#fff;border:1px solid #AAA;border-radius:8px;padding:0 5px;font:8px sans-serif;">'+fmtT(nowMin)+'</span>';
+      h+='<span style="color:#AAA;background:#fff;border:1px solid #AAA;border-radius:8px;padding:0 5px;font:8px sans-serif;position:relative;top:-1px;">'+fmtT(nowMin)+'</span>';
       h+='<span style="flex:1"></span>';
     }
     // Weather extras: sunrise, sunset, UV index, air quality

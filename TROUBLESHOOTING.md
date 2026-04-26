@@ -107,6 +107,15 @@ Replace `YOUR_CALENDAR_ID` with the Google Calendar plugin setting ID and `YOUR_
 - Empty `events` array `[]`: no calendars selected or wrong layout
 - Events missing `start_full`, `end_full`, or `date_time` fields: API format may have changed
 
+### Calendar data goes stale or events stop appearing
+
+The Google Calendar plugin must be in an **active playlist** for TRMNL to keep syncing data from Google. If you remove it from all playlists, the data stops refreshing and this plugin will eventually show outdated or no events.
+
+**Fix:**
+
+1. Add the Google Calendar plugin to a playlist and mark it as **hidden**. TRMNL will show a "Refresh paused" warning, but the tooltip confirms "Data sync is active", meaning Google Calendar data should continue refreshing without the plugin ever displaying on your screen.
+2. If data still goes stale while hidden, switch to a **1-minute duration** instead. This guarantees the data stays fresh while minimizing how often the plugin appears on your device.
+
 ### Still no calendar data?
 
 1. Try disconnecting and reconnecting your Google account in the Google Calendar plugin

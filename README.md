@@ -90,9 +90,15 @@ authorization=bearer YOUR_API_KEY
 2. Wait ~30 seconds for data to be polled and rendered
 3. Check your TRMNL device
 
-### Step 6 (optional): Hide the original calendar
+### Step 6: Keep the Google Calendar plugin in a playlist
 
-You can hide the native Google Calendar plugin from your playlist. The data will still be available for polling by this plugin.
+The Google Calendar plugin must remain in an **active playlist** for TRMNL to keep refreshing its data. If it's removed from all playlists, the data goes stale and events will eventually stop appearing in this plugin.
+
+**Recommended approach:** Add the Google Calendar plugin to a playlist and mark it as **hidden**. TRMNL shows a "Refresh paused" warning but the tooltip clarifies that "Data sync is active", meaning Google Calendar data should keep refreshing without the plugin ever appearing on your screen.
+
+**Fallback:** If you notice calendar data going stale while the plugin is hidden, switch to setting it with a **1-minute duration** instead. This guarantees data stays fresh while minimizing how often it appears on your device.
+
+> **Important:** Do not remove the Google Calendar plugin from all playlists. Even though this plugin polls its data via the API, TRMNL only refreshes the underlying Google Calendar sync when the plugin is part of an active playlist. See [Troubleshooting](TROUBLESHOOTING.md#calendar-data-goes-stale-or-events-stop-appearing) if events stop appearing.
 
 ## Customization
 
