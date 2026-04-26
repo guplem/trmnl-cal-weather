@@ -504,28 +504,17 @@ document.addEventListener("DOMContentLoaded", function() {
   var hasAD=false;
   for(var d in adByDate){if(adByDate[d].length>0){hasAD=true;break;}}
 
-  // Determine current time in user's timezone. Priority:
-  // 1. Calendar API's now_in_tz field (exact user timezone, set at render time)
-  // 2. Weather API's utc_offset_seconds applied to Date.now() (render-time clock, correct timezone)
-  // 3. JS Date (server time - last resort, likely wrong timezone)
-  // Note: weatherRaw.current.time is NOT used because it reflects poll time, not render time.
-  // Determine current time in user's timezone.
-  // now_in_tz from the calendar API is stale (set at poll time, not render time).
-  // Instead, use utc_offset_seconds from the weather API to convert render-time Date.now().
+  // Determine current time and today's date in user's timezone.
+  // Both nowMin and todayIso are derived from the same render-time clock,
+  // using utc_offset_seconds from the weather API for timezone correction.
+  // This ensures all "now" indicators (time axis tick, weather now-line,
+  // render time pill) are consistent with each other.
   var now=new Date();
-  var nowMin=now.getHours()*60+now.getMinutes();
-  if (weatherRaw && weatherRaw.utc_offset_seconds != null) {
-    var local = new Date(now.getTime() + weatherRaw.utc_offset_seconds*1000 + now.getTimezoneOffset()*60000);
-    nowMin = local.getHours()*60 + local.getMinutes();
-  }
-  // Resolve today's date using the same timezone-corrected time
-  var todayIso=todayStr||"";
-  if (!todayIso) {
-    var todayDate = (weatherRaw && weatherRaw.utc_offset_seconds != null)
-      ? new Date(now.getTime() + weatherRaw.utc_offset_seconds*1000 + now.getTimezoneOffset()*60000)
-      : now;
-    todayIso = todayDate.getFullYear()+"-"+String(todayDate.getMonth()+1).padStart(2,"0")+"-"+String(todayDate.getDate()).padStart(2,"0");
-  }
+  var localNow = (weatherRaw && weatherRaw.utc_offset_seconds != null)
+    ? new Date(now.getTime() + weatherRaw.utc_offset_seconds*1000 + now.getTimezoneOffset()*60000)
+    : now;
+  var nowMin = localNow.getHours()*60 + localNow.getMinutes();
+  var todayIso = localNow.getFullYear()+"-"+String(localNow.getMonth()+1).padStart(2,"0")+"-"+String(localNow.getDate()).padStart(2,"0");
 
   function isPast(dIso,em){return dIso<todayIso||(dIso===todayIso&&em<=nowMin);}
 
@@ -585,7 +574,7 @@ document.addEventListener("DOMContentLoaded", function() {
   h+='<div class="cw-header-row"><div class="cw-corner">';
   if(hasWeather&&rainProb.length>0&&rainProb[0]!=null) h+='<span class="cw-corner-rain">'+Math.round(rainProb[0])+'%</span>';
   h+='</div><div class="cw-day-headers">';
-  for(var i=0;i<dates.length&&i<7;i++){var di=dayInfo(dates[i]);h+='<div class="cw-day-header p--0.5 text--center'+(dates[i]===todayStr?' is-today':'')+(isWeekStart[i]?' cw-week-start':'')+'">'+di.dn+' '+di.dd+'</div>';}
+  for(var i=0;i<dates.length&&i<7;i++){var di=dayInfo(dates[i]);h+='<div class="cw-day-header p--0.5 text--center'+(dates[i]===todayIso?' is-today':'')+(isWeekStart[i]?' cw-week-start':'')+'">'+di.dn+' '+di.dd+'</div>';}
   h+='</div></div>';
 
   // --- ROW 2: Weather charts (current temp corner + per-day mini charts) ---
