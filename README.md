@@ -183,7 +183,7 @@ The plugin displays 7 days regardless of which Google Calendar layout you choose
 
 ## Troubleshooting
 
-The plugin includes a **built-in diagnostic overlay** that appears on-screen when data issues are detected (e.g., missing calendar data, unexpected format, empty events). This makes it easier to identify problems without needing browser access.
+The plugin includes a **built-in diagnostic overlay** that appears on-screen when data issues are detected (e.g., missing calendar data, unexpected format, empty events). This makes it easier to identify problems without needing browser access. It is enabled by default; once your device is working reliably, you can turn it off via the **Show diagnostic overlay** plugin setting, since transient errors (such as a single failed weather call) recover on the next refresh and the overlay covers a large portion of the calendar.
 
 After any configuration change, **save the plugin** (top right) and click **Force Refresh** to generate a new preview image. Some changes take time to propagate, especially Google Calendar updates.
 

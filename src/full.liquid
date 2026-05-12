@@ -214,6 +214,9 @@
 document.addEventListener("DOMContentLoaded", function() {
   // === CONFIG (from plugin form fields) ===
   var SHOW_RENDER_TIME = `{{ trmnl.plugin_settings.custom_fields_values.show_render_time }}` === 'true';
+  // Default ON so first-time users see setup issues; advise turning OFF once the device is stable
+  // (transient fetch failures self-heal on the next refresh and the overlay covers the calendar).
+  var SHOW_DIAGNOSTICS = `{{ trmnl.plugin_settings.custom_fields_values.show_diagnostics }}` !== 'false';
 
   // Parse data: TRMNL production uses IDX_0/IDX_1, trmnlp uses custom_fields (Ruby hash format)
   // Sanitize raw JSON strings: escape control characters that break JSON.parse
@@ -710,7 +713,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
   h+='</div>';
   // Append diagnostic overlay if any issues were detected (shown on top of content)
-  if (diag.length > 0) { container.style.position = 'relative'; h += renderDiag(); }
+  if (SHOW_DIAGNOSTICS && diag.length > 0) { container.style.position = 'relative'; h += renderDiag(); }
   container.innerHTML=h;
 });
 </script>
