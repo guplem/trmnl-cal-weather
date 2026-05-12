@@ -31,6 +31,8 @@ A custom [TRMNL](https://usetrmnl.com) plugin that combines your **Google Calend
 
 ## Setup
 
+> **Quick install:** the plugin is published as an unlisted recipe on the TRMNL dashboard at [trmnl.com/recipes/282491](https://trmnl.com/recipes/282491). The recipe pre-fills the polling URLs and markup template (Steps 3 and 4 below), so you only need to follow Step 1 (Connect Google Calendar), Step 2 (Get your API key), fill in the form fields when installing, then Step 6 (keep the Google Calendar plugin in a playlist). Step 5 (Test) is recommended to verify the install.
+
 ### Step 1: Connect Google Calendar
 
 1. Log in to [trmnl.com](https://trmnl.com)
