@@ -1,6 +1,8 @@
 # TRMNL Calendar + Weather Plugin
 
-A custom [TRMNL](https://usetrmnl.com) plugin that combines your **Google Calendar** weekly view with a **7-day weather forecast** and **air quality** data. Designed for the **TRMNL (OG)** 7.5" display in full view (800x480) with [2-bit grayscale support](https://help.trmnl.com/en/articles/12985974-understanding-color-palettes#:~:text=transitions%20between%20screens-,Changing%20the%20Palette,-The%20preferred%20color).
+A custom [TRMNL](https://usetrmnl.com) plugin that combines your **Google Calendar** weekly view with a **7-day weather forecast** and **air quality** data.
+
+> Designed for the **TRMNL (OG)** in **full** view (800x480) with the [2-bit palette](https://help.trmnl.com/en/articles/12985974-understanding-color-palettes#:~:text=transitions%20between%20screens-,Changing%20the%20Palette,-The%20preferred%20color) enabled. *TRMNL (X) is not supported.*
 
 ![Demo](calendar-weather-demo.png)
 
@@ -20,11 +22,11 @@ A custom [TRMNL](https://usetrmnl.com) plugin that combines your **Google Calend
 - **All-day events** - Displayed in a dedicated strip with calendar color bars
 - **Event details** - Location and description shown for longer events
 - **Graceful degradation** - Works with partial data (calendar only, weather only, or both)
-- **2-bit optimized** - Uses the four native grayscale shades (black, gray-30, gray-55, white); the TRMNL (OG) must be running firmware with 2-bit grayscale support
+- **2-bit optimized** - Uses the four native grayscale shades
 
 ## Prerequisites
 
-- A **TRMNL (OG)** device with **[2-bit grayscale support](https://help.trmnl.com/en/articles/12985974-understanding-color-palettes#:~:text=transitions%20between%20screens-,Changing%20the%20Palette,-The%20preferred%20color)** ([>=1.6.0 firmware](https://github.com/usetrmnl/trmnl-firmware/releases/tag/v1.6.0#:~:text=Adds%202%2Dbit%20grayscale)) and **Developer perks** enabled (comes with BYOD or Developer Edition)
+- A **TRMNL (OG)** with the **[2-bit palette](https://help.trmnl.com/en/articles/12985974-understanding-color-palettes#:~:text=transitions%20between%20screens-,Changing%20the%20Palette,-The%20preferred%20color) enabled** (available with [firmware >=1.6.0](https://github.com/usetrmnl/trmnl-firmware/releases/tag/v1.6.0#:~:text=Adds%202%2Dbit%20grayscale)) and **Developer perks** enabled (comes with BYOD or Developer Edition)
 - **Google Calendar** connected to TRMNL
 
 ## Setup
