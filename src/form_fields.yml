@@ -6,6 +6,11 @@
   github_url: https://github.com/guplem/trmnl-cal-weather
   learn_more_url: https://github.com/guplem/trmnl-cal-weather#readme
 
+- keyname: compatibility_notice
+  name: Device compatibility
+  field_type: description
+  description: "Designed for the <b>TRMNL (OG)</b> in <b>full</b> view (800x480). Requires <a class='underline' href='https://help.trmnl.com/en/articles/12985974-understanding-color-palettes' target='_blank'>2-bit palette to be enabled</a> (available with <a class='underline' href='https://github.com/usetrmnl/trmnl-firmware/releases/tag/v1.6.0#:~:text=Adds%202%2Dbit%20grayscale' target='_blank'>firmware &gt;=1.6.0</a>). <i>TRMNL (X) is not supported.</i>"
+
 - keyname: trmnl_api_key
   name: TRMNL API Key
   field_type: password
