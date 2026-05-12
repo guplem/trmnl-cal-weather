@@ -669,7 +669,11 @@ document.addEventListener("DOMContentLoaded", function() {
     if(hw){
       if(hw.p>0) h+='<div class="cw-precip-bar" style="top:'+topPct+'%;width:'+hw.p+'%;"></div>';
       if(hw.p>50) h+='<div class="cw-precip-line" style="top:'+topPct+'%;"></div>';
-      h+='<div class="cw-hour-weather" style="top:'+topPct+'%;">'+icon+'<b>'+hw.t+'\u00B0</b></div>';
+      // Each temp character is wrapped in its own span so the post-render pass can flip
+      // characters over the bar to white based on their measured x-position.
+      var tempStr=String(hw.t)+'\u00B0',charSpans='';
+      for(var c=0;c<tempStr.length;c++) charSpans+='<span class="cw-temp-char">'+tempStr.charAt(c)+'</span>';
+      h+='<div class="cw-hour-weather" data-precip="'+hw.p+'" style="top:'+topPct+'%;">'+icon+'<b>'+charSpans+'</b></div>';
     }
     else if(icon){h+='<div class="cw-hour-weather" style="top:'+topPct+'%;">'+icon+'</div>';}
   }
@@ -739,5 +743,24 @@ document.addEventListener("DOMContentLoaded", function() {
   // Append diagnostic overlay if any issues were detected (shown on top of content)
   if (SHOW_DIAGNOSTICS && diag.length > 0) { container.style.position = 'relative'; h += renderDiag(); }
   container.innerHTML=h;
+
+  // Per-character coloring for the hourly temperature: any glyph whose horizontal center
+  // sits over the precipitation bar flips to white for contrast against the #AAA fill.
+  // Runs after innerHTML so getBoundingClientRect can measure the laid-out spans.
+  var axisEl=container.querySelector('.cw-time-axis');
+  if(axisEl){
+    var axisRect=axisEl.getBoundingClientRect();
+    var slots=container.querySelectorAll('.cw-hour-weather[data-precip]');
+    for(var i=0;i<slots.length;i++){
+      var p=parseFloat(slots[i].getAttribute('data-precip'));
+      if(!(p>0)) continue;
+      var barLeftX=axisRect.right-axisRect.width*p/100;
+      var chars=slots[i].querySelectorAll('.cw-temp-char');
+      for(var j=0;j<chars.length;j++){
+        var r=chars[j].getBoundingClientRect();
+        if((r.left+r.right)/2>=barLeftX) chars[j].style.color='#fff';
+      }
+    }
+  }
 });
 </script>
