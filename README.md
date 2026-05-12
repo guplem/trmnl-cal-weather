@@ -1,6 +1,6 @@
 # TRMNL Calendar + Weather Plugin
 
-A custom [TRMNL](https://usetrmnl.com) plugin that combines your **Google Calendar** weekly view with a **7-day weather forecast** and **air quality** data. Designed for the **TRMNL (OG)** 7.5" display in full view (800x480) with 2-bit grayscale support.
+A custom [TRMNL](https://usetrmnl.com) plugin that combines your **Google Calendar** weekly view with a **7-day weather forecast** and **air quality** data. Designed for the **TRMNL (OG)** 7.5" display in full view (800x480) with [2-bit grayscale support](https://help.trmnl.com/en/articles/12985974-understanding-color-palettes#:~:text=transitions%20between%20screens-,Changing%20the%20Palette,-The%20preferred%20color).
 
 ![Demo](calendar-weather-demo.png)
 
@@ -24,7 +24,7 @@ A custom [TRMNL](https://usetrmnl.com) plugin that combines your **Google Calend
 
 ## Prerequisites
 
-- A **TRMNL (OG)** device with **2-bit grayscale support** ([>=1.6.0 firmware](https://github.com/usetrmnl/trmnl-firmware/releases/tag/v1.6.0#:~:text=Adds%202%2Dbit%20grayscale)) and **Developer perks** enabled (comes with BYOD or Developer Edition)
+- A **TRMNL (OG)** device with **[2-bit grayscale support](https://help.trmnl.com/en/articles/12985974-understanding-color-palettes#:~:text=transitions%20between%20screens-,Changing%20the%20Palette,-The%20preferred%20color)** ([>=1.6.0 firmware](https://github.com/usetrmnl/trmnl-firmware/releases/tag/v1.6.0#:~:text=Adds%202%2Dbit%20grayscale)) and **Developer perks** enabled (comes with BYOD or Developer Edition)
 - **Google Calendar** connected to TRMNL
 
 ## Setup
