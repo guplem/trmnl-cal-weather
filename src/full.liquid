@@ -123,7 +123,11 @@
   }
   .cw-hour-weather {
     position: absolute; right: 1px; font: 8px sans-serif; color: #555;
-    line-height: 1; transform: translateY(-50%); white-space: nowrap;
+    line-height: 1; white-space: nowrap;
+    /* +1px compensates for the font's baseline metrics: digits and ° sit in the upper portion
+       of the 8px line-box (Arial baseline ~80%), so a plain -50% leaves extra room below the
+       glyphs. The 1px nudge optically centers the visible text within the bar. */
+    transform: translateY(calc(-50% + 1px));
     z-index: 2;
   }
   /* Temperature value sits on top of the precip bar; #000 keeps it readable on #AAA */
