@@ -124,6 +124,15 @@
   .cw-hour-weather {
     position: absolute; right: 1px; font: 8px sans-serif; color: #555;
     line-height: 1; transform: translateY(-50%); white-space: nowrap;
+    z-index: 2;
+  }
+  .cw-hour-weather.cw-has-precip { color: #000; }
+  /* Right-anchored bar behind the precip % text; width scales with probability (40-100%).
+     #AAA on #fff so the #000 text on top stays readable. */
+  .cw-precip-bar {
+    position: absolute; right: 0; height: 11px;
+    background: #AAA; transform: translateY(-50%);
+    z-index: 1; pointer-events: none;
   }
   .cw-now-tick {
     position: absolute; left: 0; right: -1px;
@@ -646,8 +655,15 @@ document.addEventListener("DOMContentLoaded", function() {
     var icon='';
     if(m===srHalf) icon=axisSun+' ';
     else if(m===ssHalf) icon=axisMoon+' ';
-    if(hw){var wxTxt=hw.p>=40?hw.p+'%':'<b>'+hw.t+'\u00B0</b>';h+='<div class="cw-hour-weather" style="top:'+((m-gMin)/rng*100)+'%;">'+icon+wxTxt+'</div>';}
-    else if(icon){h+='<div class="cw-hour-weather" style="top:'+((m-gMin)/rng*100)+'%;">'+icon+'</div>';}
+    var topPct=(m-gMin)/rng*100;
+    if(hw){
+      var isPrecip=hw.p>=40;
+      // Right-anchored bar behind the % text; width = probability (so 40%-wide bar at 40% chance, full-width at 100%)
+      if(isPrecip) h+='<div class="cw-precip-bar" style="top:'+topPct+'%;width:'+hw.p+'%;"></div>';
+      var wxTxt=isPrecip?hw.p+'%':'<b>'+hw.t+'\u00B0</b>';
+      h+='<div class="cw-hour-weather'+(isPrecip?' cw-has-precip':'')+'" style="top:'+topPct+'%;">'+icon+wxTxt+'</div>';
+    }
+    else if(icon){h+='<div class="cw-hour-weather" style="top:'+topPct+'%;">'+icon+'</div>';}
   }
   // Current time indicator (bold tick line, clamped to grid range)
   var nowC=Math.max(gMin,Math.min(gMax,nowMin)),nowP=((nowC-gMin)/rng)*100;
