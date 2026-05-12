@@ -126,12 +126,18 @@
     line-height: 1; transform: translateY(-50%); white-space: nowrap;
     z-index: 2;
   }
-  .cw-hour-weather.cw-has-precip { color: #000; }
-  /* Right-anchored bar behind the precip % text; width scales with probability (40-100%).
-     #AAA on #fff so the #000 text on top stays readable. */
+  /* Temperature value sits on top of the precip bar; #000 keeps it readable on #AAA */
+  .cw-hour-weather b { color: #000; }
+  /* Right-anchored bar behind the temperature; width = precipitation chance (0%-100%) */
   .cw-precip-bar {
     position: absolute; right: 0; height: 11px;
     background: #AAA; transform: translateY(-50%);
+    z-index: 1; pointer-events: none;
+  }
+  /* 50% reference line; rendered only when precip > 50%, so its presence signals "more than half" */
+  .cw-precip-line {
+    position: absolute; right: 50%; width: 1px; height: 11px;
+    background: #555; transform: translateY(-50%);
     z-index: 1; pointer-events: none;
   }
   .cw-now-tick {
@@ -657,11 +663,9 @@ document.addEventListener("DOMContentLoaded", function() {
     else if(m===ssHalf) icon=axisMoon+' ';
     var topPct=(m-gMin)/rng*100;
     if(hw){
-      var isPrecip=hw.p>=40;
-      // Right-anchored bar behind the % text; width = probability (so 40%-wide bar at 40% chance, full-width at 100%)
-      if(isPrecip) h+='<div class="cw-precip-bar" style="top:'+topPct+'%;width:'+hw.p+'%;"></div>';
-      var wxTxt=isPrecip?hw.p+'%':'<b>'+hw.t+'\u00B0</b>';
-      h+='<div class="cw-hour-weather'+(isPrecip?' cw-has-precip':'')+'" style="top:'+topPct+'%;">'+icon+wxTxt+'</div>';
+      if(hw.p>0) h+='<div class="cw-precip-bar" style="top:'+topPct+'%;width:'+hw.p+'%;"></div>';
+      if(hw.p>50) h+='<div class="cw-precip-line" style="top:'+topPct+'%;"></div>';
+      h+='<div class="cw-hour-weather" style="top:'+topPct+'%;">'+icon+'<b>'+hw.t+'\u00B0</b></div>';
     }
     else if(icon){h+='<div class="cw-hour-weather" style="top:'+topPct+'%;">'+icon+'</div>';}
   }
