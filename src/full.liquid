@@ -69,7 +69,24 @@
     position: relative; overflow: hidden;
   }
   .cw-wx-text svg { width: 14px; height: 14px; flex-shrink: 0; }
-  .cw-temps { font: 9px sans-serif; white-space: nowrap; letter-spacing: -0.3px; background: #fff; }
+  /* 75% white text-shadow halo: keeps the digits readable while letting the temperature trend
+     line stay partially visible through the outline. Eight 1px offsets give a uniform halo on
+     all sides. On the 2-bit device this rgba color is not in the native palette (#000/#555/#AAA/
+     #fff) so it gets Floyd-Steinberg dithered; the browser preview looks smoother than the
+     actual device output. paint-order isn't needed because text-shadow paints below glyphs. */
+  .cw-temps {
+    font: 9px sans-serif; white-space: nowrap; letter-spacing: -0.3px;
+    text-shadow:
+      -1px -1px 0 rgba(255,255,255,0.75),  0   -1px 0 rgba(255,255,255,0.75),  1px -1px 0 rgba(255,255,255,0.75),
+      -1px  0   0 rgba(255,255,255,0.75),                                      1px  0   0 rgba(255,255,255,0.75),
+      -1px  1px 0 rgba(255,255,255,0.75),  0    1px 0 rgba(255,255,255,0.75),  1px  1px 0 rgba(255,255,255,0.75);
+  }
+  /* The '/' separator is placed inside .cw-temp-max (not in the outer text run) on purpose.
+     The paint boundary between sibling inline boxes is unavoidable when bolding only the max,
+     and we want it to fall on the min's '°' (round, narrow, tolerates a halo bite) instead of
+     on the slash (thin diagonal, very visible when its right edge is eaten by the next box's
+     white text-shadow). The slash becomes bold here as a side effect; this also makes its
+     1px outline read more clearly against the temperature trend line behind it. */
   .cw-temp-max { font-weight: bold; }
   .cw-wx-night {
     position: absolute; left: 0; right: 0; top: 0; bottom: 0;
@@ -630,7 +647,7 @@ document.addEventListener("DOMContentLoaded", function() {
       // Vertical "now" line on today's weather cell
       if(dates[i]===todayIso){var nowPctW=(nowMin/1440)*100;h+='<div class="cw-wx-now" style="left:'+nowPctW+'%"></div>';}
       // Layer 3: Weather icon (left) + min/max temp text (right)
-      h+='<span class="cw-wx-text">'+wIcon(wmoCodes[i])+'<span class="cw-temps px--0.5 rounded--xsmall">'+Math.round(tempMin[i])+'\u00B0/<span class="cw-temp-max">'+Math.round(tempMax[i])+'\u00B0</span></span></span>';
+      h+='<span class="cw-wx-text">'+wIcon(wmoCodes[i])+'<span class="cw-temps px--0.5 rounded--xsmall">'+Math.round(tempMin[i])+'\u00B0<span class="cw-temp-max">/'+Math.round(tempMax[i])+'\u00B0</span></span></span>';
       h+='</div>';
     }
     h+='</div>';
