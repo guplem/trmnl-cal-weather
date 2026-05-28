@@ -22,7 +22,7 @@ Custom TRMNL e-ink display plugin combining Google Calendar (weekly time-grid vi
 ## Patterns
 
 - Calendar events come as a flat array from the TRMNL API (not grouped by date)
-- Event times parsed from `start_full`/`end_full` ISO timestamps (not the AM/PM `start`/`end` fields)
+- Event times prefer `start_full`/`end_full` ISO timestamps; the AM/PM `start`/`end` fields are used as fallback when `start_full`/`end_full` are absent
 - `calname` contains email addresses, `calendar_names` map resolves them to display names
 - Multi-day all-day events are duplicated onto each day they span
 - Weather dates (ISO) used as the column source; calendar events matched by date

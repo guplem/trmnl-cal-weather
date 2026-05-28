@@ -6,8 +6,9 @@
   Overlapping events displayed side by side.
 
   Data sources (Polling strategy):
-    IDX_0 = TRMNL Calendar API (events grouped by "Month DD" keys)
-    IDX_1 = Open-Meteo daily forecast + current conditions
+    IDX_0 = TRMNL Calendar API (events as a flat array; the trmnlp local-dev mock instead groups them by "Month DD" keys)
+    IDX_1 = Open-Meteo daily + hourly forecast + current conditions
+    IDX_2 = Open-Meteo air quality (optional, European AQI)
 
   Recommended Open-Meteo URL (IDX_1):
     https://api.open-meteo.com/v1/forecast?latitude=41.39&longitude=2.17
@@ -670,8 +671,10 @@ document.addEventListener("DOMContentLoaded", function() {
   h+='<div class="cw-grid-area"><div class="cw-time-axis">';
   // Hour labels (e.g. " 9:00", "10:00")
   for(var m=gMin;m<=gMax;m+=60) h+='<div class="cw-hour-label" style="top:'+((m-gMin)/rng*100)+'%;">'+fmtH(m)+'</div>';
-  // Hourly weather at half-hour marks: shows temp if dry (<40%), rain% if wet (>=40%)
-  // Sunrise/sunset icons shown at the half-hour mark of their respective hours
+  // Hourly weather at half-hour marks: always shows temperature, with the precipitation
+  // probability rendered as a horizontal bar behind it (width = p%, drawn when p > 0)
+  // and a small vertical tick at the 50% mark of the bar (drawn when p > 50).
+  // Sunrise/sunset icons shown at the half-hour mark of their respective hours.
   var srMinAxis = sunrise ? (parseInt(sunrise.split(':')[0])*60+parseInt(sunrise.split(':')[1])) : -1;
   var ssMinAxis = sunset ? (parseInt(sunset.split(':')[0])*60+parseInt(sunset.split(':')[1])) : -1;
   var srHalf = srMinAxis>=0 ? Math.floor(srMinAxis/60)*60+30 : -1;

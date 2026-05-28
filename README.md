@@ -11,15 +11,15 @@ A custom [TRMNL](https://usetrmnl.com) plugin that combines your **Google Calend
 - **Time-grid weekly calendar** - Events positioned at their actual time slots, just like Google Calendar
 - **Multiple Google Calendars** - Each calendar gets a distinct grayscale bar pattern (supports up to 11 calendars)
 - **Overlapping events** - Displayed side by side automatically
-- **Weather forecast per day** - Icon + min/max temperature in a compact header row
+- **Weather forecast per day** - Icon + min/max temperature in a compact row near the top
 - **Hourly weather charts** - Precipitation probability bars + temperature line behind each day's header
-- **Hourly forecast on time axis** - Shows temperature or rain probability (when >= 40%) at each half-hour mark
+- **Hourly forecast on time axis** - Temperature labels at each half-hour mark, with precipitation probability bars behind them
 - **Current conditions** - Current temperature and today's rain probability in the top-left corner
 - **Sunrise/sunset, UV index, air quality** - Displayed in the bottom legend row
 - **Current time indicator** - Bold tick on the time axis
-- **Past events dimmed** - Lighter background for events that have already ended
-- **Week start separator** - Darker vertical line at the configured first day of the week
-- **All-day events** - Displayed in a dedicated strip with calendar color bars
+- **Past events dimmed** - Gray background for events that have already ended (vs white for upcoming ones)
+- **Week start separator** - Darker vertical line at the first day of the week (taken from your Google Calendar plugin settings)
+- **All-day events** - Displayed in a dedicated strip with the same grayscale pattern bars as timed events
 - **Event details** - Location and description shown for longer events
 - **Graceful degradation** - Works with partial data (calendar only, weather only, or both)
 - **2-bit optimized** - Uses the four native grayscale shades
@@ -64,8 +64,8 @@ Go to [trmnl.com/account](https://trmnl.com/account) and copy your **API key**.
 
 ```
 https://usetrmnl.com/api/plugin_settings/YOUR_CALENDAR_ID/data
-https://api.open-meteo.com/v1/forecast?latitude=YOUR_LAT&longitude=YOUR_LON&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max,sunrise,sunset,uv_index_max&hourly=temperature_2m,precipitation_probability&current=temperature_2m&timezone=YOUR_TIMEZONE&forecast_days=7
-https://air-quality-api.open-meteo.com/v1/air-quality?latitude=YOUR_LAT&longitude=YOUR_LON&current=european_aqi&timezone=YOUR_TIMEZONE
+https://api.open-meteo.com/v1/forecast?latitude=YOUR_LAT&longitude=YOUR_LON&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max,sunrise,sunset,uv_index_max&hourly=temperature_2m,precipitation_probability&%63urrent=temperature_2m&timezone=YOUR_TIMEZONE&forecast_days=7
+https://air-quality-api.open-meteo.com/v1/air-quality?latitude=YOUR_LAT&longitude=YOUR_LON&%63urrent=european_aqi&timezone=YOUR_TIMEZONE
 ```
 
    - **Polling Verb:** `GET`
