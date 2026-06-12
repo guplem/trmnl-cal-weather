@@ -27,96 +27,75 @@ A custom [TRMNL](https://usetrmnl.com) plugin that combines your **Google Calend
 ## Prerequisites
 
 - A **TRMNL (OG)** with the **[2-bit palette](https://help.trmnl.com/en/articles/12985974-understanding-color-palettes#:~:text=transitions%20between%20screens-,Changing%20the%20Palette,-The%20preferred%20color) enabled** (available with [firmware >=1.6.0](https://github.com/usetrmnl/trmnl-firmware/releases/tag/v1.6.0#:~:text=Adds%202%2Dbit%20grayscale)) and **Developer perks** enabled (comes with BYOD or Developer Edition)
-- **Google Calendar** connected to TRMNL
+- A **Google account** with access to the calendars you want to display (it will run the middleware)
 
 ## Setup
 
-> **Quick install:** the plugin is published as an unlisted recipe on the TRMNL dashboard at [trmnl.com/recipes/282491](https://trmnl.com/recipes/282491). The recipe pre-fills the polling URLs and markup template (Steps 3 and 4 below), so you only need to follow Step 1 (Connect Google Calendar), Step 2 (Get your API key), fill in the form fields when installing, then Step 6 (keep the Google Calendar plugin in a playlist). Step 5 (Test) is recommended to verify the install.
+> **Quick install:** the plugin is published as an unlisted recipe on the TRMNL dashboard at [trmnl.com/recipes/282491](https://trmnl.com/recipes/282491). The recipe pre-fills the polling URLs and markup template (Steps 2 and 3 below), so you only need to follow Step 1 (deploy the middleware), then fill in the form fields when installing. Step 4 (Test) is recommended to verify the install.
 
-### Step 1: Connect Google Calendar
+### Step 1: Deploy the middleware
 
-1. Log in to [trmnl.com](https://trmnl.com)
-2. Go to **Plugins** > search **Google Calendar** > **Add**
-3. Follow the Google OAuth flow to connect your account
-4. **Select all calendars** you want to display (hold Ctrl/Cmd to multi-select)
-5. Set the layout to **Week** (recommended - see [why](#why-week-layout))
-6. Save
+All data (calendar, weather, air quality) is served by a small **Google Apps Script** that you deploy once on your own Google account. It is free, takes ~10 minutes, and needs no server. Follow **[MIDDLEWARE_SETUP.md](MIDDLEWARE_SETUP.md)**.
 
-After saving, note the **plugin_setting_id** from the URL:
+You will end up with the two values used in the next step:
 
-```
-https://usetrmnl.com/plugin_settings/12345/edit
-                                     ^^^^^
-                                  this number
-```
+- `YOUR_SCRIPT_URL` - the web app URL (ends in `/exec`)
+- `YOUR_SECRET_TOKEN` - the token you set in the script's `CONFIG`
 
-### Step 2: Get your API key
+> Why a middleware? TRMNL's native Google Calendar plugin stops syncing while hidden in a playlist, and TRMNL's fixed 30s polling timeout trips on slow Open-Meteo responses. The script reads your calendars directly from Google and serves Open-Meteo from a cache, which removes both failure modes.
 
-Go to [trmnl.com/account](https://trmnl.com/account) and copy your **API key**.
-
-### Step 3: Create the Private Plugin
+### Step 2: Create the Private Plugin
 
 1. Go to **Plugins** > search **Private Plugin** > **Create**
 2. Configure:
    - **Name:** `Calendar + Weather`
    - **Strategy:** `Polling`
-   - **Polling URL(s)** (one per line, replace `YOUR_CALENDAR_ID` and your coordinates/timezone):
+   - **Polling URL(s)** (one per line, replace `YOUR_SCRIPT_URL`, `YOUR_SECRET_TOKEN`, and your coordinates/timezone):
 
 ```
-https://usetrmnl.com/api/plugin_settings/YOUR_CALENDAR_ID/data
-https://api.open-meteo.com/v1/forecast?latitude=YOUR_LAT&longitude=YOUR_LON&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max,sunrise,sunset,uv_index_max&hourly=temperature_2m,precipitation_probability&%63urrent=temperature_2m&timezone=YOUR_TIMEZONE&forecast_days=7
-https://air-quality-api.open-meteo.com/v1/air-quality?latitude=YOUR_LAT&longitude=YOUR_LON&%63urrent=european_aqi&timezone=YOUR_TIMEZONE
+YOUR_SCRIPT_URL?token=YOUR_SECRET_TOKEN&src=cal&tz=YOUR_TIMEZONE
+YOUR_SCRIPT_URL?token=YOUR_SECRET_TOKEN&src=weather&lat=YOUR_LAT&lon=YOUR_LON&tz=YOUR_TIMEZONE
+YOUR_SCRIPT_URL?token=YOUR_SECRET_TOKEN&src=aqi&lat=YOUR_LAT&lon=YOUR_LON&tz=YOUR_TIMEZONE
 ```
 
    - **Polling Verb:** `GET`
-   - **Polling Headers:**
-
-```
-authorization=bearer YOUR_API_KEY
-```
 
 3. Save
 
-> The Open-Meteo URLs don't require authentication. They silently ignore the auth header.
+> No polling headers are needed; the `token` parameter is the authentication.
 
 > The third URL (air quality) is optional. Remove it if you don't need AQI data.
 
-### Step 4: Add the template
+### Step 3: Add the template
 
 1. Open your Private Plugin's settings
 2. Go to the **Markup** tab (Full view)
 3. Copy the entire contents of [`src/full.liquid`](src/full.liquid) and paste it in
 4. Save
 
-### Step 5: Test
+### Step 4: Test
 
 1. Click **Force Refresh** on the plugin page
 2. Wait ~30 seconds for data to be polled and rendered
 3. Check your TRMNL device
 
-### Step 6: Keep the Google Calendar plugin in a playlist
-
-The Google Calendar plugin must remain in an **active playlist** for TRMNL to keep refreshing its data. If it's removed from all playlists, the data goes stale and events will eventually stop appearing in this plugin.
-
-**Recommended approach:** Add the Google Calendar plugin to a playlist and mark it as **hidden**. TRMNL shows a "Refresh paused" warning but the tooltip clarifies that "Data sync is active", meaning Google Calendar data should keep refreshing without the plugin ever appearing on your screen.
-
-**Fallback:** If you notice calendar data going stale while the plugin is hidden, switch to setting it with a **1-minute duration** instead. This guarantees data stays fresh while minimizing how often it appears on your device.
-
-> **Important:** Do not remove the Google Calendar plugin from all playlists. Even though this plugin polls its data via the API, TRMNL only refreshes the underlying Google Calendar sync when the plugin is part of an active playlist. See [Troubleshooting](TROUBLESHOOTING.md#calendar-data-goes-stale-or-events-stop-appearing) if events stop appearing.
-
 ## Customization
 
 ### Change location
 
-Replace the latitude, longitude, and timezone in the Open-Meteo URLs:
+Replace the `lat`, `lon`, and `tz` parameters in the polling URLs (`tz` appears on all three, `lat`/`lon` on weather and air quality):
 
 | Parameter | Example |
 |-----------|---------|
-| `latitude` | `41.39` (Barcelona) |
-| `longitude` | `2.17` (Barcelona) |
-| `timezone` | `Europe/Madrid` |
+| `lat` | `41.39` (Barcelona) |
+| `lon` | `2.17` (Barcelona) |
+| `tz` | `Europe/Madrid` |
 
 Find your coordinates at [open-meteo.com](https://open-meteo.com/en/docs).
+
+### Choose calendars
+
+By default the middleware includes every calendar that is checked ("selected") in the Google Calendar UI of the account that deployed it. To pin an explicit set instead, list calendar IDs in `CONFIG.calendarIds` in the Apps Script and deploy a new version.
 
 ### Calendar bar patterns
 
@@ -140,7 +119,7 @@ Calendar names are resolved from email addresses using Google Calendar's display
 
 ### Temperature units
 
-Open-Meteo returns Celsius by default. For Fahrenheit, add `&temperature_unit=fahrenheit` to the weather URL.
+Open-Meteo returns Celsius by default. For Fahrenheit, add `&temperature_unit=fahrenheit` to the URL built in `forecastUrl()` in the Apps Script, then deploy a new version.
 
 ## Local development
 
@@ -159,11 +138,15 @@ The `.trmnlp.yml` file includes sample data. The template auto-detects the trmnl
 ```
 TRMNL Polling (every ~15 min)
     |
-    +--> IDX_0: TRMNL Calendar API    (events + calendar names)
+    +--> IDX_0: ?src=cal      (events + calendar names)
     |
-    +--> IDX_1: Open-Meteo Forecast   (daily + hourly + current)
+    +--> IDX_1: ?src=weather  (daily + hourly + current)
     |
-    +--> IDX_2: Open-Meteo Air Quality (optional, European AQI)
+    +--> IDX_2: ?src=aqi      (optional, European AQI)
+              |
+    Google Apps Script middleware (free, your own account)
+        reads Google Calendar directly
+        serves Open-Meteo from a cache (15-min trigger)
               |
         Liquid Template (full.liquid)
               |
@@ -177,18 +160,14 @@ TRMNL Polling (every ~15 min)
 
 ## Data sources
 
-- **Calendar:** TRMNL's parsed Google Calendar data (handles OAuth, sync, timezone)
-- **Weather:** [Open-Meteo](https://open-meteo.com) free forecast API (no key, no registration)
+- **Calendar:** your Google Calendar, read directly by the [Apps Script middleware](MIDDLEWARE_SETUP.md) (no TRMNL Google Calendar plugin involved)
+- **Weather:** [Open-Meteo](https://open-meteo.com) free forecast API (no key, no registration), served through the middleware cache
 - **Air Quality:** [Open-Meteo Air Quality API](https://open-meteo.com/en/docs/air-quality-api) (European AQI, optional)
-
-## Why "Week" layout?
-
-The plugin displays 7 days regardless of which Google Calendar layout you choose. "Month" or "Day" layouts work but return significantly more data (a month view can include 80-100+ events across 6 weeks). Since TRMNL has a data size limit for plugin payloads, larger responses risk being truncated mid-stream, which causes the calendar to fail silently. "Week" keeps the payload small and avoids this issue.
 
 ## Troubleshooting
 
 The plugin includes a **built-in diagnostic overlay** that appears on-screen when data issues are detected (e.g., missing calendar data, unexpected format, empty events). This makes it easier to identify problems without needing browser access. It is enabled by default; once your device is working reliably, you can turn it off via the **Show diagnostic overlay** plugin setting, since transient errors (such as a single failed weather call) recover on the next refresh and the overlay covers a large portion of the calendar.
 
-After any configuration change, **save the plugin** (top right) and click **Force Refresh** to generate a new preview image. Some changes take time to propagate, especially Google Calendar updates.
+After any configuration change, **save the plugin** (top right) and click **Force Refresh** to generate a new preview image. After editing the Apps Script, remember code changes only go live after deploying a **New version** (Deploy > Manage deployments).
 
 For detailed debugging steps, see **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)**.

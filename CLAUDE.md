@@ -6,10 +6,11 @@ Custom TRMNL e-ink display plugin combining Google Calendar (weekly time-grid vi
 
 ## Architecture
 
-- **Data strategy:** Private Plugin with Polling (3 URLs)
-  - `IDX_0` = TRMNL Calendar API (flat array of events with `date_time`, `start_full`, `end_full`, `calname`)
-  - `IDX_1` = Open-Meteo forecast (daily + hourly + current temperature)
-  - `IDX_2` = Open-Meteo air quality (optional, European AQI)
+- **Data strategy:** Private Plugin with Polling (3 URLs), all pointing to one Google Apps Script middleware (`?src=cal|weather|aqi`)
+  - `IDX_0` = `src=cal` - Google Calendar events read directly by the script; mimics the TRMNL calendar `/data` shape (flat array with `date_time`, `start_full`, `end_full`, `calname`)
+  - `IDX_1` = `src=weather` - Open-Meteo forecast passthrough (daily + hourly + current), served from a trigger-warmed cache
+  - `IDX_2` = `src=aqi` - Open-Meteo air quality passthrough (optional, European AQI)
+- **Legacy direct mode:** the TRMNL calendar `/data` URL + direct Open-Meteo URLs still parse identically; the middleware replaced them for reliability (see Gotchas).
 - **Rendering:** JS builds the DOM from Liquid-injected JSON. No external dependencies.
 - **Screen:** 800x480px, 2-bit grayscale (4 native shades: #000, #555, #AAA, #fff)
 
@@ -17,6 +18,7 @@ Custom TRMNL e-ink display plugin combining Google Calendar (weekly time-grid vi
 
 - `src/full.liquid` - Production template (paste into TRMNL markup editor)
 - `src/settings.yml` - Plugin settings + polling URLs for trmnlp local dev
+- `src/middleware/calendar_weather_proxy.gs` - Apps Script middleware (deployed manually at script.google.com; setup in `MIDDLEWARE_SETUP.md`)
 - `.trmnlp.yml` - Local dev config with sample data
 
 ## Patterns
@@ -36,3 +38,6 @@ Custom TRMNL e-ink display plugin combining Google Calendar (weekly time-grid vi
 - trmnlp's Liquid `json` filter outputs Ruby hash syntax (`=>` instead of `:`). Use `str.replace(/ => /g, ': ')` before JSON.parse.
 - Only use hex colors #000, #555, #AAA, #fff. Everything else gets Floyd-Steinberg dithered on 2-bit displays.
 - The `calname` field contains email addresses, not display names. Use `calendar_names` map from the API response.
+- TRMNL pauses a native plugin's data sync while it is hidden in playlists (despite the tooltip claiming "Data sync is active"). This is why the middleware exists.
+- TRMNL's polling timeout is 30s, fixed, and one slow URL degrades the whole plugin (all URLs treated as a unit).
+- Apps Script: code edits only go live after Deploy > Manage deployments > New version. The `/exec` URL otherwise keeps serving the old code.
