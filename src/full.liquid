@@ -5,20 +5,19 @@
   Past events dimmed. Current time tick on axis.
   Overlapping events displayed side by side.
 
-  Data sources (Polling strategy):
-    IDX_0 = TRMNL Calendar API (events as a flat array; the trmnlp local-dev mock instead groups them by "Month DD" keys)
-    IDX_1 = Open-Meteo daily + hourly forecast + current conditions
-    IDX_2 = Open-Meteo air quality (optional, European AQI)
+  Data sources (Polling strategy; all three URLs point to the Apps Script
+  middleware - see MIDDLEWARE_SETUP.md):
+    IDX_0 = ?src=cal     -> Google Calendar events (TRMNL calendar /data JSON shape;
+                            the trmnlp local-dev mock instead groups them by "Month DD" keys)
+    IDX_1 = ?src=weather -> Open-Meteo daily + hourly forecast + current conditions
+    IDX_2 = ?src=aqi     -> Open-Meteo air quality (optional, European AQI)
 
-  Recommended Open-Meteo URL (IDX_1):
-    https://api.open-meteo.com/v1/forecast?latitude=41.39&longitude=2.17
-      &daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max,sunrise,sunset,uv_index_max
-      &hourly=temperature_2m,precipitation_probability
-      &current=temperature_2m
-      &timezone=Europe/Madrid&forecast_days=7
+  Polling URLs (tz required on all three; lat/lon on weather/aqi):
+    YOUR_SCRIPT_URL?token=YOUR_SECRET_TOKEN&src=cal&tz=YOUR_TIMEZONE
+    YOUR_SCRIPT_URL?token=YOUR_SECRET_TOKEN&src=weather&lat=YOUR_LAT&lon=YOUR_LON&tz=YOUR_TIMEZONE
+    YOUR_SCRIPT_URL?token=YOUR_SECRET_TOKEN&src=aqi&lat=YOUR_LAT&lon=YOUR_LON&tz=YOUR_TIMEZONE
 
-  Optional Air Quality URL (IDX_2):
-    https://air-quality-api.open-meteo.com/v1/air-quality?latitude=41.39&longitude=2.17&current=european_aqi&timezone=Europe/Madrid
+  Legacy direct URLs (TRMNL calendar /data + direct Open-Meteo) parse identically.
 {% endcomment %}
 
 <style>
@@ -322,21 +321,22 @@ document.addEventListener("DOMContentLoaded", function() {
   function isTruncationError(err) { return err && /unexpected.*(end|eof)|end of/i.test(err); }
   if (!calRaw) {
     if (isTruncationError(calErr)) {
-      diag.push({label: 'Calendar: data truncated', detail: 'The calendar JSON was cut off mid-stream, which means TRMNL\'s data size limit was exceeded. Reduce the number of selected calendars or switch the Google Calendar plugin layout to "Week".'});
+      diag.push({label: 'Calendar: data truncated', detail: 'The calendar JSON was cut off mid-stream, which means TRMNL\'s data size limit was exceeded. Reduce the number of selected calendars or lower daysAhead/maxTextLength in the middleware CONFIG.'});
     } else if (calErr) {
       var calDetail = 'Parse error: ' + calErr;
       if (calRawType === 'string') calDetail += ' Note: IDX_0 was a string (possible double-encoding).';
       diag.push({label: 'Calendar: bad data received', detail: calDetail});
     } else {
-      diag.push({label: 'Calendar: no data received', detail: 'IDX_0 is empty or null. Check that the polling URL and API key are correct.'});
+      diag.push({label: 'Calendar: no data received', detail: 'IDX_0 is empty or null. Check the middleware URL and token in the polling URLs.'});
     }
   } else if (calRaw.error) {
     // API returned an error object (e.g., {"error": "Plugin setting not found"})
     var errMsg = calRaw.error;
     var hint = '';
-    if (/not found/i.test(errMsg)) hint = 'The Google Calendar plugin ID is wrong. Open your Google Calendar plugin settings and copy the number from the URL: usetrmnl.com/plugin_settings/[THIS_NUMBER]/edit';
-    else if (/unauthorized|forbidden|auth/i.test(errMsg)) hint = 'The API key is invalid or expired. Go to trmnl.com/account and copy a fresh API key.';
-    else hint = 'Check the polling URL and API key in your plugin settings.';
+    if (/unauthorized|forbidden|auth/i.test(errMsg)) hint = 'The token in the polling URL does not match CONFIG.token in the Apps Script middleware.';
+    else if (/not configured/i.test(errMsg)) hint = 'The middleware CONFIG is incomplete. Edit the Apps Script and deploy a new version.';
+    else if (/missing/i.test(errMsg)) hint = 'The polling URL is missing required parameters (tz for cal; lat/lon/tz for weather/aqi).';
+    else hint = 'Check the middleware URL and token in your plugin settings.';
     diag.push({label: 'Calendar: API error', detail: errMsg + '. ' + hint});
   } else if (!hasCalData(calRaw)) {
     var keys = Object.keys(calRaw);
@@ -346,16 +346,16 @@ document.addEventListener("DOMContentLoaded", function() {
     var cd0 = calRaw.data || calRaw;
     var evts0 = cd0.events || [];
     if (Array.isArray(evts0) && evts0.length === 0) {
-      diag.push({label: 'Calendar: 0 events', detail: 'The calendar responded but the events array is empty. Verify the Google Calendar plugin has calendars selected and layout set to "Week".'});
+      diag.push({label: 'Calendar: 0 events', detail: 'The calendar responded but the events array is empty. Verify your calendars are checked ("selected") in Google Calendar or listed in CONFIG.calendarIds in the middleware.'});
     }
   }
   // Weather diagnostics
   if (!weatherRaw && isTruncationError(wxErr)) {
-    diag.push({label: 'Weather: data truncated', detail: 'The weather JSON was cut off mid-stream, which means TRMNL\'s data size limit was exceeded. Check the Open-Meteo polling URL.'});
+    diag.push({label: 'Weather: data truncated', detail: 'The weather JSON was cut off mid-stream, which means TRMNL\'s data size limit was exceeded. Check the src=weather polling URL.'});
   } else if (!weatherRaw && wxErr) {
     diag.push({label: 'Weather: bad data received', detail: 'Parse error: ' + wxErr});
   } else if (!weatherRaw) {
-    diag.push({label: 'Weather: no data received', detail: 'IDX_1 is empty or null. Check the Open-Meteo URL.'});
+    diag.push({label: 'Weather: no data received', detail: 'IDX_1 is empty or null. Check the src=weather polling URL.'});
   } else if (!weatherRaw.daily) {
     diag.push({label: 'Weather: unexpected format', detail: 'Received data but no "daily" object. Keys: [' + Object.keys(weatherRaw).join(', ') + ']', raw: rawPreview(weatherRaw)});
   }
