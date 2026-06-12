@@ -11,21 +11,26 @@
   field_type: description
   description: "Designed for the <b>TRMNL (OG)</b> in <b>full</b> view (800x480). Requires <a class='underline' href='https://help.trmnl.com/en/articles/12985974-understanding-color-palettes' target='_blank'>2-bit palette to be enabled</a> (available with <a class='underline' href='https://github.com/usetrmnl/trmnl-firmware/releases/tag/v1.6.0#:~:text=Adds%202%2Dbit%20grayscale' target='_blank'>firmware &gt;=1.6.0</a>). <i>TRMNL (X) is not supported.</i>"
 
-- keyname: trmnl_api_key
-  name: TRMNL API Key
-  field_type: password
-  description: "Your personal API key from <a href='https://trmnl.com/account' target='_blank'>trmnl.com/account</a>. Needed to read your calendar data."
-  help_text: "This is kept private and only used to poll your own calendar plugin"
-  placeholder: "user_..."
-  group: Calendar
+- keyname: middleware_notice
+  name: Middleware
+  field_type: description
+  description: "All data (calendar, weather, air quality) is served by a free <b>Google Apps Script</b> you deploy once on your own Google account (~10 minutes). Follow the <a class='underline' href='https://github.com/guplem/trmnl-cal-weather/blob/master/MIDDLEWARE_SETUP.md' target='_blank'>middleware setup guide</a> to get the two values below."
 
-- keyname: calendar_plugin_id
-  name: Google Calendar Plugin ID
+- keyname: middleware_url
+  name: Middleware URL
   field_type: string
-  description: "Your Google Calendar plugin_setting_id. Find it in the URL when editing your <a href='https://github.com/guplem/trmnl-cal-weather?tab=readme-ov-file#step-1-connect-google-calendar' target='_blank'>Google Calendar plugin</a>: <code>usetrmnl.com/plugin_settings/<b>12345</b>/edit</code>. The plugin must stay in an <a href='https://github.com/guplem/trmnl-cal-weather?tab=readme-ov-file#step-6-keep-the-google-calendar-plugin-in-a-playlist' target='_blank'>active playlist</a> (hidden or with 1-min duration) to keep data refreshed."
-  help_text: "The numeric ID, not the full URL"
-  placeholder: "12345"
-  group: Calendar
+  description: "The Apps Script web app URL from the <a class='underline' href='https://github.com/guplem/trmnl-cal-weather/blob/master/MIDDLEWARE_SETUP.md' target='_blank'>middleware setup</a>. Just the base URL ending in <code>/exec</code>, without query parameters."
+  help_text: "Ends in /exec"
+  placeholder: "https://script.google.com/macros/s/.../exec"
+  group: Middleware
+
+- keyname: middleware_token
+  name: Middleware token
+  field_type: password
+  description: "The secret you set in <code>CONFIG.token</code> when deploying the middleware."
+  help_text: "This is kept private and must match the token configured in your Apps Script"
+  placeholder: "long random string"
+  group: Middleware
 
 - keyname: latitude
   name: Latitude
