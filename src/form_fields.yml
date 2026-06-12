@@ -32,6 +32,15 @@
   placeholder: "long random string"
   group: Middleware
 
+- keyname: ignored_phrases
+  name: Ignored phrases
+  field_type: string
+  optional: true
+  description: "Comma-separated patterns, each a case-insensitive regular expression tested against the event title and description. Plain text means 'contains'; use <code>^Work$</code> for an exact match or <code>\\bWork\\b</code> for a whole word."
+  help_text: "Patterns cannot contain commas"
+  placeholder: "^Work$, ^Focus Time$"
+  group: Calendar
+
 - keyname: latitude
   name: Latitude
   field_type: string

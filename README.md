@@ -97,6 +97,18 @@ Find your coordinates at [open-meteo.com](https://open-meteo.com/en/docs).
 
 By default the middleware includes every calendar that is checked ("selected") in the Google Calendar UI of the account that deployed it. To pin an explicit set instead, list calendar IDs in `CONFIG.calendarIds` in the Apps Script and deploy a new version.
 
+### Ignore events
+
+Fill the **Ignored phrases** plugin setting with a comma-separated list of patterns. Each pattern is a case-insensitive [regular expression](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions) tested against the event title and description:
+
+| Pattern | Hides events that... |
+|---------|----------------------|
+| `Work` | contain "Work" anywhere (also "Workshop") |
+| `^Work$` | are titled exactly "Work" |
+| `\bSDG\b` | contain "SDG" as a whole word (not "SDGs") |
+
+An invalid regex is treated as literal text. Patterns cannot contain commas, so a quantifier like `{2,3}` cannot be used; alternation works within one pattern (e.g. `^(Work|SDG)$`).
+
 ### Calendar bar patterns
 
 Calendars are automatically assigned visual patterns based on alphabetical order of their names. The 11 available patterns cycle through:

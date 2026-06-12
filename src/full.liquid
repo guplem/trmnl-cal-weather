@@ -253,6 +253,26 @@ document.addEventListener("DOMContentLoaded", function() {
   // Default ON so first-time users see setup issues; advise turning OFF once the device is stable
   // (transient fetch failures self-heal on the next refresh and the overlay covers the calendar).
   var SHOW_DIAGNOSTICS = `{{ trmnl.plugin_settings.custom_fields_values.show_diagnostics }}` !== 'false';
+  // Comma-separated patterns; each is a case-insensitive regex tested against the
+  // event title and description. Plain text behaves as "contains"; anchors give an
+  // exact match (^Work$) and \b a whole word (\bSDG\b). An invalid regex falls back
+  // to literal text matching. String.raw keeps backslashes intact inside the
+  // template literal (a plain backtick string would turn \b into a backspace char).
+  // Replaces the native Google Calendar plugin's "Ignored Phrases" option.
+  var IGNORED_PHRASES = String.raw`{{ trmnl.plugin_settings.custom_fields_values.ignored_phrases }}`
+    .split(',')
+    .map(function(s){ return s.trim(); })
+    .filter(function(s){ return s.length > 0; })
+    .map(function(p){
+      try { return new RegExp(p, 'i'); }
+      catch(e) { return new RegExp(p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'); }
+    });
+  function isIgnoredEvent(ev) {
+    for (var i = 0; i < IGNORED_PHRASES.length; i++) {
+      if (IGNORED_PHRASES[i].test(ev.summary || '') || IGNORED_PHRASES[i].test(ev.description || '')) return true;
+    }
+    return false;
+  }
 
   // Parse data: TRMNL production uses IDX_0/IDX_1, trmnlp uses custom_fields (Ruby hash format)
   // Sanitize raw JSON strings: escape control characters that break JSON.parse
@@ -422,6 +442,15 @@ document.addEventListener("DOMContentLoaded", function() {
       var MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
       eventsByDate = rawEvents; // already grouped
       // We'll match by calKey below
+    }
+  }
+  // Drop ignored events from both data paths (flat production array and grouped
+  // trmnlp mock) before the legend scan and rendering see them.
+  if (IGNORED_PHRASES.length > 0) {
+    for (var igk in eventsByDate) {
+      if (Array.isArray(eventsByDate[igk])) {
+        eventsByDate[igk] = eventsByDate[igk].filter(function(ev){ return !isIgnoredEvent(ev); });
+      }
     }
   }
   var eventsGrouped = Array.isArray((calRaw && (calRaw.data||calRaw).events)||[]);
