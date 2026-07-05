@@ -398,7 +398,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
   if (!hasWeather && !hasCalData(calRaw)) {
     container.style.position = 'relative';
-    container.innerHTML = '<div class="cw-empty">No data available</div>' + renderDiag();
+    container.innerHTML = '<div class="cw-empty">No data available</div>' + (SHOW_DIAGNOSTICS ? renderDiag() : '');
     return;
   }
 
