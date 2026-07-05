@@ -65,7 +65,7 @@ const CONFIG = {
 // Bump on every code change and check it in the ?src=cal response: it proves
 // which code version the /exec URL is actually serving (see the Apps Script
 // deploy gotcha in CLAUDE.md).
-const MIDDLEWARE_VERSION = 3;
+const MIDDLEWARE_VERSION = 4;
 
 const ISO_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
 
@@ -170,14 +170,26 @@ function getConfiguredCalendars() {
   });
 }
 
-// getMyStatus() is the RSVP of the account that owns this script: YES, NO,
-// MAYBE, INVITED, OWNER, or null when that account is not a guest (e.g. an
-// event on someone else's shared calendar). Only an explicit NO is filtered,
-// so events without an RSVP always stay visible.
-function isDeclinedByMe(event) {
+// An event is hidden when the calendar it sits on answered "No" to it.
+// Two checks are needed because Google reports the RSVP inconsistently:
+//   - getMyStatus() works for invites from others, but returns OWNER (not NO)
+//     for events the account created itself, even after declining them.
+//   - The full guest list (getGuestList(true), which includes the owner;
+//     getGuestByEmail() does not) carries the real per-guest RSVP. The entry
+//     matching the calendar's address is the calendar owner's answer. This
+//     also hides events a shared calendar's owner declined on their side.
+// Only an explicit NO hides an event; no RSVP data means it stays visible.
+function isDeclinedByMe(event, calendarId) {
   if (!CONFIG.hideDeclinedEvents) return false;
   try {
-    return event.getMyStatus() === CalendarApp.GuestStatus.NO;
+    if (event.getMyStatus() === CalendarApp.GuestStatus.NO) return true;
+    const guests = event.getGuestList(true);
+    for (var i = 0; i < guests.length; i++) {
+      if (guests[i].getEmail().toLowerCase() === String(calendarId).toLowerCase()) {
+        return guests[i].getGuestStatus() === CalendarApp.GuestStatus.NO;
+      }
+    }
+    return false;
   } catch (err) {
     return false; // an unreadable status must never hide the event
   }
