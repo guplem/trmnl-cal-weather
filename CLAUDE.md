@@ -40,5 +40,7 @@ Custom TRMNL e-ink display plugin combining Google Calendar (weekly time-grid vi
 - The `calname` field contains email addresses, not display names. Use `calendar_names` map from the API response.
 - TRMNL pauses a native plugin's data sync while it is hidden in playlists (despite the tooltip claiming "Data sync is active"). This is why the middleware exists.
 - TRMNL's polling timeout is 30s, fixed, and one slow URL degrades the whole plugin (all URLs treated as a unit).
-- Apps Script: code edits only go live after Deploy > Manage deployments > New version. The `/exec` URL otherwise keeps serving the old code.
+- Apps Script: code edits only go live after Deploy > Manage deployments > pencil icon > New version. The `/exec` URL otherwise keeps serving the old code. Deploy > "New deployment" is the wrong path: it mints a second `/exec` URL and leaves the original one on the old code.
+- `?src=cal` returns `middleware_version` (a constant in the .gs). Compare it against the repo copy to check which code a deployment is serving.
+- `?src=cal&debug=1` skips the declined-events filter and adds a `debug_rsvp` object (RSVP status, guests, owner) to every event.
 - In `form_fields.yml` the default key is `default`, not `default_value`. TRMNL silently ignores unknown keys, so a wrong key means no default is applied.

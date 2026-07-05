@@ -62,6 +62,11 @@ const CONFIG = {
   cacheMaxAgeSeconds: 21600
 };
 
+// Bump on every code change and check it in the ?src=cal response: it proves
+// which code version the /exec URL is actually serving (see the Apps Script
+// deploy gotcha in CLAUDE.md).
+const MIDDLEWARE_VERSION = 3;
+
 const ISO_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
 
 function forecastUrl(location) {
@@ -99,7 +104,7 @@ function doGet(request) {
     if (!params.tz) {
       return jsonResponse({ error: 'missing tz parameter (IANA timezone, e.g. Europe/Madrid)' });
     }
-    return jsonResponse(buildCalendarPayload(params.tz));
+    return jsonResponse(buildCalendarPayload(params.tz, params.debug === '1'));
   }
   if (source === 'weather' || source === 'aqi') {
     if (!params.lat || !params.lon || !params.tz) {
@@ -120,7 +125,7 @@ function jsonResponse(payload) {
 
 // === CALENDAR (?src=cal) ===
 
-function buildCalendarPayload(tz) {
+function buildCalendarPayload(tz, debug) {
   // Derive "today at midnight" via formatDate so the window is correct even
   // if the script project timezone differs from the requested tz.
   const todayParts = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd').split('-');
@@ -134,8 +139,8 @@ function buildCalendarPayload(tz) {
       const calendarId = calendar.getId();
       calendarNames[calendarId] = calendar.getName();
       calendar.getEvents(windowStart, windowEnd).forEach(function (event) {
-        if (isDeclinedByMe(event)) return;
-        events.push(formatEvent(event, calendarId, tz));
+        if (!debug && isDeclinedByMe(event, calendarId)) return;
+        events.push(formatEvent(event, calendarId, tz, debug));
       });
     } catch (err) {
       // One unreadable calendar (revoked share, deleted, etc.) must not take
@@ -148,7 +153,8 @@ function buildCalendarPayload(tz) {
       events: events,
       calendar_names: calendarNames,
       today_in_tz: Utilities.formatDate(new Date(), tz, ISO_FORMAT),
-      first_day: CONFIG.firstDayOfWeek
+      first_day: CONFIG.firstDayOfWeek,
+      middleware_version: MIDDLEWARE_VERSION
     }
   };
 }
@@ -180,9 +186,9 @@ function isDeclinedByMe(event) {
 // Same field names as TRMNL's calendar /data endpoint so the template needs
 // no changes. For all-day events Google's end is exclusive (midnight after
 // the last day), which is exactly what the template's expansion loop expects.
-function formatEvent(event, calendarId, tz) {
+function formatEvent(event, calendarId, tz, debug) {
   const startFull = Utilities.formatDate(event.getStartTime(), tz, ISO_FORMAT);
-  return {
+  const formatted = {
     summary: event.getTitle(),
     description: cleanText(event.getDescription()),
     location: cleanText(event.getLocation()),
@@ -192,6 +198,26 @@ function formatEvent(event, calendarId, tz) {
     date_time: startFull,
     calname: calendarId
   };
+  if (debug) formatted.debug_rsvp = describeRsvp(event, calendarId);
+  return formatted;
+}
+
+// Debug-only (?src=cal&debug=1): raw RSVP data per event, plus no filtering,
+// to diagnose why an event is or is not treated as declined.
+function describeRsvp(event, calendarId) {
+  try {
+    return {
+      my_status: String(event.getMyStatus()),
+      owned_by_me: event.isOwnedByMe(),
+      creators: event.getCreators().join(','),
+      guests: event.getGuestList(true).map(function (guest) {
+        return guest.getEmail() + '=' + String(guest.getGuestStatus());
+      }).join(', '),
+      filtered_as_declined: isDeclinedByMe(event, calendarId)
+    };
+  } catch (err) {
+    return { error: String(err) };
+  }
 }
 
 // Strip HTML tags (Google descriptions may contain them), collapse
