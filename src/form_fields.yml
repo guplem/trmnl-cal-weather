@@ -65,12 +65,12 @@
   name: Show render time
   field_type: boolean
   description: "Display the render time in the bottom bar"
-  default_value: "false"
+  default: "false"
   group: Display
 
 - keyname: show_diagnostics
   name: Show diagnostic overlay
   field_type: boolean
   description: "Show an on-screen pop-up when data issues are detected (e.g. weather or calendar fetch failures). Recommended ON during setup. Once the device is working reliably, turn this OFF: transient errors (like a single failed weather call) resolve on the next refresh, and the overlay covers a large portion of the calendar."
-  default_value: "true"
+  default: "true"
   group: Display

@@ -41,3 +41,4 @@ Custom TRMNL e-ink display plugin combining Google Calendar (weekly time-grid vi
 - TRMNL pauses a native plugin's data sync while it is hidden in playlists (despite the tooltip claiming "Data sync is active"). This is why the middleware exists.
 - TRMNL's polling timeout is 30s, fixed, and one slow URL degrades the whole plugin (all URLs treated as a unit).
 - Apps Script: code edits only go live after Deploy > Manage deployments > New version. The `/exec` URL otherwise keeps serving the old code.
+- In `form_fields.yml` the default key is `default`, not `default_value`. TRMNL silently ignores unknown keys, so a wrong key means no default is applied.
