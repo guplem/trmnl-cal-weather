@@ -49,6 +49,7 @@ At the top of the script, set:
 |-------|-------|
 | `token` | A long random string (40+ chars). This is the only thing protecting your data. |
 | `calendarIds` | Leave `[]` to use every calendar checked in your Google Calendar UI, or list explicit IDs |
+| `hideDeclinedEvents` | `true` (default) hides events you answered "No" to; set `false` to keep showing them |
 
 > Location and timezone are NOT configured in the script: every request must carry them as `lat`/`lon`/`tz` URL parameters (filled by the TRMNL plugin form fields).
 

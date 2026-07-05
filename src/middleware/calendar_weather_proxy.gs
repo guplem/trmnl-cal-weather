@@ -49,6 +49,9 @@ const CONFIG = {
   // Sent to the template as first_day. 0 = Sunday, 1 = Monday.
   firstDayOfWeek: 1,
 
+  // Skip events you have declined (RSVP "No") in Google Calendar.
+  hideDeclinedEvents: true,
+
   // Truncate description/location so the payload stays well under TRMNL's
   // data size limit (oversized payloads get cut mid-stream and fail to parse).
   maxTextLength: 200,
@@ -131,6 +134,7 @@ function buildCalendarPayload(tz) {
       const calendarId = calendar.getId();
       calendarNames[calendarId] = calendar.getName();
       calendar.getEvents(windowStart, windowEnd).forEach(function (event) {
+        if (isDeclinedByMe(event)) return;
         events.push(formatEvent(event, calendarId, tz));
       });
     } catch (err) {
@@ -158,6 +162,19 @@ function getConfiguredCalendars() {
   return CalendarApp.getAllCalendars().filter(function (calendar) {
     return calendar.isSelected();
   });
+}
+
+// getMyStatus() is the RSVP of the account that owns this script: YES, NO,
+// MAYBE, INVITED, OWNER, or null when that account is not a guest (e.g. an
+// event on someone else's shared calendar). Only an explicit NO is filtered,
+// so events without an RSVP always stay visible.
+function isDeclinedByMe(event) {
+  if (!CONFIG.hideDeclinedEvents) return false;
+  try {
+    return event.getMyStatus() === CalendarApp.GuestStatus.NO;
+  } catch (err) {
+    return false; // an unreadable status must never hide the event
+  }
 }
 
 // Same field names as TRMNL's calendar /data endpoint so the template needs

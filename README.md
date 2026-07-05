@@ -109,6 +109,8 @@ Fill the **Ignored phrases** plugin setting with a comma-separated list of patte
 
 An invalid regex is treated as literal text. Patterns cannot contain commas, so a quantifier like `{2,3}` cannot be used; alternation works within one pattern (e.g. `^(Work|SDG)$`).
 
+Events you have declined (RSVP "No") are hidden automatically by the middleware. To keep showing them, set `CONFIG.hideDeclinedEvents` to `false` in the Apps Script and deploy a new version.
+
 ### Calendar bar patterns
 
 Calendars are automatically assigned visual patterns based on alphabetical order of their names. The 11 available patterns cycle through:
