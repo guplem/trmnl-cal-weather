@@ -19,10 +19,12 @@
  *     is hidden in a playlist, so events polled from its /data endpoint go
  *     stale. This script reads the calendars directly from the Google account
  *     that owns it, so there is no TRMNL-side sync left to stall.
- *   - TRMNL's polling timeout is 30s and Open-Meteo occasionally takes
- *     longer, which degrades the whole plugin. Open-Meteo responses here are
- *     served from a cache kept warm by a time-driven trigger, so TRMNL always
- *     gets an instant answer (and the last good copy if Open-Meteo is down).
+ *   - TRMNL's polling timeout is 30s. Open-Meteo occasionally takes longer,
+ *     and building the calendar live (reading every calendar, plus a per-event
+ *     RSVP lookup) takes ~15s and can spike past 30s, which degrades the whole
+ *     plugin. All three responses here are served from a cache kept warm by a
+ *     time-driven trigger, so TRMNL always gets an instant answer (and the last
+ *     good copy if Open-Meteo is down or the calendar build is slow).
  *
  * The ?src=cal response mimics the JSON shape of TRMNL's calendar /data
  * endpoint (see "Data format reference" in TROUBLESHOOTING.md), so the
@@ -65,7 +67,7 @@ const CONFIG = {
 // Bump on every code change and check it in the ?src=cal response: it proves
 // which code version the /exec URL is actually serving (see the Apps Script
 // deploy gotcha in CLAUDE.md).
-const MIDDLEWARE_VERSION = 4;
+const MIDDLEWARE_VERSION = 5;
 
 const ISO_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
 
@@ -104,7 +106,9 @@ function doGet(request) {
     if (!params.tz) {
       return jsonResponse({ error: 'missing tz parameter (IANA timezone, e.g. Europe/Madrid)' });
     }
-    return jsonResponse(buildCalendarPayload(params.tz, params.debug === '1'));
+    const debug = params.debug === '1';
+    if (!debug) rememberCalendarTz(params.tz);
+    return jsonResponse(serveCalendar(params.tz, debug));
   }
   if (source === 'weather' || source === 'aqi') {
     if (!params.lat || !params.lon || !params.tz) {
@@ -159,6 +163,36 @@ function buildCalendarPayload(tz, debug) {
   };
 }
 
+// Building the calendar live is slow (~15s: it reads every calendar plus a
+// per-event RSVP lookup) and can spike past TRMNL's 30s poll timeout, so the
+// payload is cached exactly like the Open-Meteo responses. TRMNL always gets
+// the warm copy instantly; only a cold cache (first request, or nothing cached
+// for 6h) pays the build cost. The 15-minute trigger keeps it warm, so a
+// calendar edit shows up within one trigger cycle. debug requests never cache:
+// they must always reflect the live RSVP data they exist to inspect.
+function serveCalendar(tz, debug) {
+  if (debug) return buildCalendarPayload(tz, true);
+  const key = calendarCacheKey(tz);
+  const cachedText = CacheService.getScriptCache().get(key);
+  if (cachedText) return JSON.parse(cachedText);
+  return buildAndCacheCalendar(key, tz);
+}
+
+function calendarCacheKey(tz) {
+  return 'cal:' + tz;
+}
+
+function buildAndCacheCalendar(key, tz) {
+  const payload = buildCalendarPayload(tz, false);
+  try {
+    CacheService.getScriptCache().put(key, JSON.stringify(payload), CONFIG.cacheMaxAgeSeconds);
+  } catch (err) {
+    // Caching is an optimization; if put fails (e.g. payload over the cache
+    // value limit) still return the freshly built payload to the caller.
+  }
+  return payload;
+}
+
 function getConfiguredCalendars() {
   if (CONFIG.calendarIds.length > 0) {
     return CONFIG.calendarIds
@@ -170,22 +204,22 @@ function getConfiguredCalendars() {
   });
 }
 
-// An event is hidden when the calendar it sits on answered "No" to it.
-// Two checks are needed because Google reports the RSVP inconsistently:
-//   - getMyStatus() works for invites from others, but returns OWNER (not NO)
-//     for events the account created itself, even after declining them.
-//   - The full guest list (getGuestList(true), which includes the owner;
-//     getGuestByEmail() does not) carries the real per-guest RSVP. The entry
-//     matching the calendar's address is the calendar owner's answer. This
-//     also hides events a shared calendar's owner declined on their side.
-// Only an explicit NO hides an event; no RSVP data means it stays visible.
+// An event is hidden when the calendar's own address answered "No" to it.
+// getGuestList(true) includes the calendar owner (getGuestList()/
+// getGuestByEmail() do not), so the entry matching the calendar's address is
+// that account's real RSVP. This single list covers both cases Google reports
+// inconsistently: invites from others AND events the account created itself.
+// getMyStatus() is intentionally not used: it returns OWNER (not NO) for
+// self-created declined events, so it adds a per-event API call without
+// catching anything the guest-list check misses. Only an explicit NO hides an
+// event; no matching guest or no RSVP data means it stays visible.
 function isDeclinedByMe(event, calendarId) {
   if (!CONFIG.hideDeclinedEvents) return false;
   try {
-    if (event.getMyStatus() === CalendarApp.GuestStatus.NO) return true;
     const guests = event.getGuestList(true);
+    const ownAddress = String(calendarId).toLowerCase();
     for (var i = 0; i < guests.length; i++) {
-      if (guests[i].getEmail().toLowerCase() === String(calendarId).toLowerCase()) {
+      if (guests[i].getEmail().toLowerCase() === ownAddress) {
         return guests[i].getGuestStatus() === CalendarApp.GuestStatus.NO;
       }
     }
@@ -287,10 +321,25 @@ function lastRequestedLocation() {
   return stored ? JSON.parse(stored) : null;
 }
 
-// Attach a time-driven trigger (every 15 minutes) to this function so the
-// Open-Meteo cache is always warm: see MIDDLEWARE_SETUP.md, Step 8.
-// It does nothing until the first weather/aqi request has been served.
+// Store the timezone of the most recent calendar request so the trigger can
+// rebuild the calendar cache for the same tz TRMNL actually polls.
+function rememberCalendarTz(tz) {
+  const properties = PropertiesService.getScriptProperties();
+  if (properties.getProperty('last_cal_tz') !== tz) {
+    properties.setProperty('last_cal_tz', tz);
+  }
+}
+
+function lastCalendarTz() {
+  return PropertiesService.getScriptProperties().getProperty('last_cal_tz');
+}
+
+// Attach a time-driven trigger (every 15 minutes) to this function so all three
+// caches stay warm: see MIDDLEWARE_SETUP.md, Step 8. Each source does nothing
+// until its first request has been served (which records the location / tz).
 function refreshUpstreamCaches() {
+  const tz = lastCalendarTz();
+  if (tz) buildAndCacheCalendar(calendarCacheKey(tz), tz);
   const location = lastRequestedLocation();
   if (!location) return;
   fetchAndCache(cacheKey('weather', location), forecastUrl(location));

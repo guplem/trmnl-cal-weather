@@ -5,19 +5,19 @@ The plugin's data layer: one small Google Apps Script web app serves all three d
 ```
 TRMNL Polling (every ~15 min)
     |
-    +--> IDX_0: YOUR_SCRIPT_URL?src=cal      -- reads Google Calendar directly
+    +--> IDX_0: YOUR_SCRIPT_URL?src=cal      -- Google Calendar events, from cache
     +--> IDX_1: YOUR_SCRIPT_URL?src=weather  -- Open-Meteo forecast, from cache
     +--> IDX_2: YOUR_SCRIPT_URL?src=aqi      -- Open-Meteo air quality, from cache
                       |
         Google Apps Script web app (free, runs as your Google account)
                       |
-        time-driven trigger refreshes the Open-Meteo cache every 15 min
+        time-driven trigger refreshes all three caches every 15 min
 ```
 
 ## Why
 
 - **No more stale calendar data.** TRMNL pauses the Google Calendar plugin's data sync while it is hidden in a playlist, so events polled from its `/data` endpoint freeze. The script reads your calendars directly from Google, so the TRMNL Google Calendar plugin is no longer needed at all.
-- **No more weather timeouts.** TRMNL's polling timeout is 30 seconds and cannot be raised. Open-Meteo occasionally takes 10-25s+, which degrades the plugin and eventually stops auto-refresh. The script answers TRMNL instantly from a cache and keeps serving the last good copy if Open-Meteo is down.
+- **No more timeouts.** TRMNL's polling timeout is 30 seconds and cannot be raised. Open-Meteo occasionally takes 10-25s+, and building the calendar live (reading every calendar plus a per-event RSVP check) takes ~15s and can spike past 30s. Either one degrades the plugin and eventually stops auto-refresh. The script answers TRMNL instantly from a cache for all three sources and keeps serving the last good copy if an upstream is slow or down.
 - **One place for control and logs.** Apps Script keeps execution logs (Executions tab), and you can extend the script freely.
 
 The `?src=cal` response mimics the JSON shape of TRMNL's calendar `/data` endpoint (see the [Data format reference](TROUBLESHOOTING.md#data-format-reference)), so **the Liquid template needs zero changes**.
@@ -97,7 +97,7 @@ URL parameters (all required):
 3. Event source: **Time-driven** > **Minutes timer** > **Every 15 minutes**
 4. Save
 
-This keeps the Open-Meteo cache warm so TRMNL is always answered instantly, even when Open-Meteo is slow. The trigger warms the most recently requested location (it does nothing until the first weather/AQI request arrives).
+This keeps all three caches (calendar, weather, AQI) warm so TRMNL is always answered instantly, even when Open-Meteo is slow or the calendar build takes ~15s. The trigger rebuilds the calendar for the most recently requested timezone and warms the most recently requested location; each source does nothing until its first request has been served.
 
 ### Step 9: Point the TRMNL plugin at the proxy
 

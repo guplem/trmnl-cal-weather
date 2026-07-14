@@ -7,7 +7,7 @@ Custom TRMNL e-ink display plugin combining Google Calendar (weekly time-grid vi
 ## Architecture
 
 - **Data strategy:** Private Plugin with Polling (3 URLs), all pointing to one Google Apps Script middleware (`?src=cal|weather|aqi`)
-  - `IDX_0` = `src=cal` - Google Calendar events read directly by the script; mimics the TRMNL calendar `/data` shape (flat array with `date_time`, `start_full`, `end_full`, `calname`)
+  - `IDX_0` = `src=cal` - Google Calendar events read directly by the script, served from a trigger-warmed cache (building live is ~15s and can exceed TRMNL's 30s timeout); mimics the TRMNL calendar `/data` shape (flat array with `date_time`, `start_full`, `end_full`, `calname`)
   - `IDX_1` = `src=weather` - Open-Meteo forecast passthrough (daily + hourly + current), served from a trigger-warmed cache
   - `IDX_2` = `src=aqi` - Open-Meteo air quality passthrough (optional, European AQI)
 - **Legacy direct mode:** the TRMNL calendar `/data` URL + direct Open-Meteo URLs still parse identically; the middleware replaced them for reliability (see Gotchas).
