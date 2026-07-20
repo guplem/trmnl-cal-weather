@@ -1,0 +1,51 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Grep",
+      "Glob",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(find *)",
+      "Bash(git status*)",
+      "Bash(git log*)",
+      "Bash(git diff*)",
+      "Bash(git show*)",
+      "Bash(git branch*)",
+      "Bash(bun test*)",
+      "Bash(trmnlp *)",
+      "Bash(gh issue *)",
+      "Bash(gh pr *)",
+      "Bash(gh label *)"
+    ],
+    "ask": [],
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.local)",
+      "Read(**/.env.private)",
+      "Read(**/.env.secrets)",
+      "Read(**/.clasprc.json)",
+      "Read(**/secrets/**)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "case \"$CLAUDE_FILE\" in *src/lib/*.js) echo '[hook] src/lib changed: this logic is ALSO inlined in full.liquid or the .gs. Update the matching inline copy and keep it behavior-identical (see ADR 0006).' ;; *full.liquid) echo '[hook] full.liquid changed: if you touched a pure helper, update the matching src/lib/*.js and its test too (ADR 0006).' ;; *.gs) echo '[hook] .gs changed: if you touched cleanText/cacheKey/forecastUrl, update src/lib/middleware.js and its test too (ADR 0006), and bump MIDDLEWARE_VERSION.' ;; esac"
+          },
+          {
+            "type": "command",
+            "command": "case \"$CLAUDE_FILE\" in *src/lib/*.js) echo '[hook] Logic changed. Run: bun test . (or the validate agent) before opening a PR.' ;; esac"
+          }
+        ]
+      }
+    ]
+  }
+}
