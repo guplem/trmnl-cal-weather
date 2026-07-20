@@ -1,0 +1,16 @@
+# Local pre-commit automation (optional convenience). Install once:
+#   winget install evilmartians.lefthook   (or: brew install lefthook)
+#   lefthook install
+#
+# The real enforcement is CI: the ruleset "Requirements for merge" blocks
+# merging until the `checks` job (which runs `bun test .`) is green, so a commit
+# made without this hook (or with --no-verify) cannot merge failing tests.
+#
+# There is no formatter or linter (ADR 0005), and there are no generated files,
+# so pre-commit runs the tests only and there is no post-merge codegen hook.
+# This command is identical to what CI runs, so local and CI cannot drift apart.
+
+pre-commit:
+  commands:
+    tests:
+      run: bun test .
