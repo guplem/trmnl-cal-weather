@@ -147,6 +147,14 @@ trmnlp serve
 
 The `.trmnlp.yml` file includes sample data. The template auto-detects the trmnlp environment and reads data from custom fields.
 
+### Running the tests
+
+The pure logic (time parsing, overlap layout, ignored-event matching, JSON recovery, text cleanup) is extracted into `src/lib/` and covered by unit tests. Run them with [Bun](https://bun.sh):
+
+```bash
+bun test .
+```
+
 ## Architecture
 
 ```
