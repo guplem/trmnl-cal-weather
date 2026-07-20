@@ -66,7 +66,7 @@ const CONFIG = {
 
 // Bump on every code change and check it in the ?src=cal response: it proves
 // which code version the /exec URL is actually serving (see the Apps Script
-// deploy gotcha in CLAUDE.md).
+// deploy gotcha in src/middleware/AGENTS.md).
 const MIDDLEWARE_VERSION = 5;
 
 const ISO_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
