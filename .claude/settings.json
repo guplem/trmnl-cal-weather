@@ -38,11 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "case \"$CLAUDE_FILE\" in *src/lib/*.js) echo '[hook] src/lib changed: this logic is ALSO inlined in full.liquid or the .gs. Update the matching inline copy and keep it behavior-identical (see ADR 0006).' ;; *full.liquid) echo '[hook] full.liquid changed: if you touched a pure helper, update the matching src/lib/*.js and its test too (ADR 0006).' ;; *.gs) echo '[hook] .gs changed: if you touched cleanText/cacheKey/forecastUrl, update src/lib/middleware.js and its test too (ADR 0006), and bump MIDDLEWARE_VERSION.' ;; esac"
-          },
-          {
-            "type": "command",
-            "command": "case \"$CLAUDE_FILE\" in *src/lib/*.js) echo '[hook] Logic changed. Run: bun test . (or the validate agent) before opening a PR.' ;; esac"
+            "command": "case \"$CLAUDE_FILE\" in *src/lib/*.js) echo '[hook] src/lib is the single source of the pure helpers. Run `bun run build` to regenerate src/full.liquid and the .gs, update the matching *.test.js, then run `bun test .`. If you changed middleware.js logic, bump MIDDLEWARE_VERSION in the .gs.template (ADR 0006).' ;; *.template) echo '[hook] template changed. Run `bun run build` to regenerate the committed src/full.liquid / .gs, then `bun test .` (ADR 0006).' ;; *full.liquid|*.gs) echo '[hook] GENERATED FILE - do not edit directly. Edit src/lib/*.js or the matching *.template, then run `bun run build` (ADR 0006).' ;; esac"
           }
         ]
       }

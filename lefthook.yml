@@ -3,14 +3,26 @@
 #   lefthook install
 #
 # The real enforcement is CI: the ruleset "Requirements for merge" blocks
-# merging until the `checks` job (which runs `bun test .`) is green, so a commit
-# made without this hook (or with --no-verify) cannot merge failing tests.
+# merging until the `checks` job (which runs `bun test .`) is green. That suite
+# includes the generated-file drift test (src/lib/generated.test.js), so a
+# commit made without this hook (or with --no-verify) cannot merge a stale or
+# hand-edited src/full.liquid / .gs.
 #
-# There is no formatter or linter (ADR 0005), and there are no generated files,
-# so pre-commit runs the tests only and there is no post-merge codegen hook.
-# This command is identical to what CI runs, so local and CI cannot drift apart.
+# There is no formatter or linter (ADR 0005). Commands run in order (piped):
+# first regenerate the committed src/full.liquid and .gs from src/lib + the
+# templates and stage them, then run the tests. See ADR 0006.
 
 pre-commit:
+  piped: true
   commands:
+    # Regenerate the ready-to-paste full.liquid and .gs from src/lib and the
+    # templates whenever the source or the build changes, and stage the result.
+    helpers-build:
+      glob:
+        - "src/lib/*.js"
+        - "src/full.liquid.template"
+        - "src/middleware/calendar_weather_proxy.gs.template"
+        - "build.mjs"
+      run: bun run build && git add src/full.liquid src/middleware/calendar_weather_proxy.gs
     tests:
       run: bun test .

@@ -3,7 +3,10 @@ name: Pull request checks
 # Runs the test suite on every pull request targeting the default branch and on
 # pushes to it. The repo ruleset "Requirements for merge" requires this job's
 # check ("checks"), so a PR cannot merge unless it passes. There is no formatter
-# or linter in this repo (ADR 0005), so the tests are the whole gate.
+# or linter in this repo (ADR 0005), so the tests are the whole gate. The suite
+# includes the generated-file drift test (src/lib/generated.test.js), which runs
+# build.mjs in memory and fails if the committed src/full.liquid or .gs is stale
+# or hand-edited, so no separate build step is needed here (ADR 0006).
 
 on:
   pull_request:
