@@ -1,7 +1,7 @@
-// Pure date-to-label helpers, copied verbatim from the inline JS in
-// `src/full.liquid`. There is no build step, so the template keeps its own
-// inline copy; the two MUST stay in sync (see src/AGENTS.md and
-// adr/0006-extracted-testable-helpers-with-inline-copies.md).
+// Pure date-to-label helpers. This module is the single source; the build step
+// (build.mjs, `bun run build`) inlines it into the generated `src/full.liquid`.
+// Never edit that generated copy. See src/AGENTS.md and
+// adr/0006-extracted-testable-helpers-with-inline-copies.md.
 
 var DA=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 var MN2=["January","February","March","April","May","June","July","August","September","October","November","December"];

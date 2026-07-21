@@ -1,9 +1,11 @@
-// Pure ignored-event matching, copied from the inline JS in `src/full.liquid`.
-// The inline template builds IGNORED_PHRASES from a Liquid tag at render time;
-// here the raw comma string is a parameter so the compile pipeline and the
-// match are testable. There is no build step, so the template keeps its own
-// inline copy; the two MUST stay in sync (see src/AGENTS.md and
-// adr/0006-extracted-testable-helpers-with-inline-copies.md).
+// Pure ignored-event matching. This module is the single source; the build
+// step (build.mjs, `bun run build`) inlines it into the generated
+// `src/full.liquid`. `isIgnoredEvent` takes the compiled phrases as a parameter
+// so it stays pure; the build emits it as `isIgnoredEventPure` plus a wrapper
+// `isIgnoredEvent(ev)` that binds the template's IGNORED_PHRASES, and the
+// template's IGNORED_PHRASES is built by calling `compileIgnoredPhrases`. Never
+// edit the generated copy. See src/AGENTS.md and
+// adr/0006-extracted-testable-helpers-with-inline-copies.md.
 
 /**
  * Compile a comma-separated "Ignored phrases" string into case-insensitive

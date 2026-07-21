@@ -1,7 +1,7 @@
-// Pure event time-and-layout helpers, copied verbatim from the inline JS in
-// `src/full.liquid` so they can run under `bun test`. There is no build step,
-// so the template keeps its own inline copy; the two MUST stay in sync (see
-// src/AGENTS.md and adr/0006-extracted-testable-helpers-with-inline-copies.md).
+// Pure event time-and-layout helpers. This module is the single source; the
+// build step (build.mjs, `bun run build`) inlines it into the generated
+// `src/full.liquid`. Never edit that generated copy. See src/AGENTS.md and
+// adr/0006-extracted-testable-helpers-with-inline-copies.md.
 
 /**
  * Parse an event start time to minutes-since-midnight. Prefers the `start_full`

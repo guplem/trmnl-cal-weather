@@ -1,12 +1,12 @@
-// Pure helpers copied verbatim from the Apps Script middleware
-// `src/middleware/calendar_weather_proxy.gs`. The .gs runs on Google Apps
-// Script and cannot be imported here, so these copies are the tested source of
-// truth; the .gs keeps its own copy and the two MUST stay in sync (see
-// src/middleware/AGENTS.md and
-// adr/0006-extracted-testable-helpers-with-inline-copies.md).
+// Pure helpers for the Apps Script middleware. This module is the single
+// source; the build step (build.mjs, `bun run build`) inlines it into the
+// generated `src/middleware/calendar_weather_proxy.gs`. Never edit that
+// generated copy. See src/middleware/AGENTS.md and
+// adr/0006-extracted-testable-helpers-with-inline-copies.md.
 //
 // `cleanText` reads CONFIG.maxTextLength in the .gs; here the limit is a
-// parameter so the function is pure.
+// parameter so the function is pure. The build emits it as `cleanTextPure`
+// plus a wrapper `cleanText(text)` that binds CONFIG.maxTextLength.
 
 /**
  * Strip HTML tags, collapse whitespace, and truncate to a maximum length,

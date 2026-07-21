@@ -1,8 +1,8 @@
-// Pure WMO-weather-code to SVG icon mapping, copied verbatim from the inline
-// JS in `src/full.liquid`. SVGs use white fill for opaque shapes so they read
-// on the 2-bit e-ink palette. There is no build step, so the template keeps
-// its own inline copy; the two MUST stay in sync (see src/AGENTS.md and
-// adr/0006-extracted-testable-helpers-with-inline-copies.md).
+// Pure WMO-weather-code to SVG icon mapping. SVGs use white fill for opaque
+// shapes so they read on the 2-bit e-ink palette. This module is the single
+// source; the build step (build.mjs, `bun run build`) inlines it into the
+// generated `src/full.liquid`. Never edit that generated copy. See src/AGENTS.md
+// and adr/0006-extracted-testable-helpers-with-inline-copies.md.
 
 /**
  * Map a WMO weather code to an inline SVG icon string.
