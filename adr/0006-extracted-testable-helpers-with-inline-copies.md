@@ -1,29 +1,36 @@
-# Pure helpers extracted to `src/lib` as the tested source of truth, with in-sync inline copies
+# Pure helpers in `src/lib` as the single source, inlined into the generated template and `.gs` by a build step
 
 ## Context
 
-The plugin's pure logic lives inline in two places that cannot be imported by a test runner: the browser JS embedded in `src/full.liquid` (a Liquid template), and `src/middleware/calendar_weather_proxy.gs` (Google Apps Script, which runs only on Google's servers). There is no build step and no bundler, and adding one to rewire the template into imported modules would risk the live display. The personal standard still mandates red-green TDD for testable logic.
+The plugin's pure logic runs inline in two places a test runner cannot import: the browser JS embedded in `src/full.liquid` (a Liquid template pasted into TRMNL), and `src/middleware/calendar_weather_proxy.gs` (Google Apps Script, which runs only on Google's servers). The personal standard mandates red-green TDD for testable logic. The first cut of this ADR extracted the helpers into `src/lib/` but kept a hand-maintained inline copy in each of those files, so the same function existed twice and the two copies could silently drift.
 
 ## Decision
 
-Copy the genuinely pure, self-contained helpers into plain ES modules under `src/lib/`, each with a `bun test` suite, and treat `src/lib/` as the tested source of truth.
+`src/lib/*.js` holds the **only** hand-edited copy of the pure helpers, each with a `bun test` suite. A build step inlines them into the shipped files, so there is no second copy to keep in sync.
 
-- Extracted from `full.liquid`: `toMin`, `layoutOverlaps` (`eventLayout.js`); `dayInfo`, `calKey` (`dateLabels.js`); `compileIgnoredPhrases`, `isIgnoredEvent` (`ignoredEvents.js`); `sanitizeJson`, `parseLiquid`, `hasCalData`, `deepParse` (`jsonRecovery.js`); `wIcon` (`weatherIcon.js`).
-- Extracted from the `.gs`: `cleanText`, `cacheKey`, `forecastUrl` (`middleware.js`).
-- Where the inline original closed over an outer value, the extracted version takes it as a parameter so the module is pure: `isIgnoredEvent(ev, ignoredPhrases)` and `cleanText(text, maxTextLength)`. Behavior is otherwise identical to the inline original.
-- **The inline copy and the `src/lib` copy must stay in sync.** When either changes, both change and stay behavior-identical. Nothing enforces this at runtime (no build step); the test suite plus this rule and the `src/AGENTS.md`/`src/middleware/AGENTS.md` gotchas are the guard.
+- **Single source:** `src/lib/` modules stay pure, typed (JSDoc), and tested.
+  - From the template: `toMin`, `layoutOverlaps` (`eventLayout.js`); `dayInfo`, `calKey` (`dateLabels.js`); `compileIgnoredPhrases`, `isIgnoredEvent` (`ignoredEvents.js`); `sanitizeJson`, `parseLiquid`, `hasCalData`, `deepParse` (`jsonRecovery.js`); `wIcon` (`weatherIcon.js`).
+  - From the middleware: `cleanText`, `cacheKey`, `forecastUrl` (`middleware.js`).
+- **Templates with a marker:** `src/full.liquid.template` and `src/middleware/calendar_weather_proxy.gs.template` are the hand-edited shells. Each has one `@generated:helpers` marker where the helpers are inlined; everything else is authored there.
+- **Build step:** `build.mjs` (run with `bun run build`) reads each template, replaces the marker with the concatenated `src/lib` source (stripped of `export`/`import` so it is plain in-scope JS/GS), and writes the committed, ready-to-paste `src/full.liquid` and `.gs`. Each generated file carries a "GENERATED - do not edit" banner.
+- **Signature-preserving wrappers:** two helpers closed over an outer value in the original inline code. The build emits the pure function under a `*Pure` name plus a thin wrapper that restores the original call site, so no call site in the template or `.gs` changes:
+  - `isIgnoredEvent(ev)` -> `isIgnoredEventPure(ev, ignoredPhrases)` + `function isIgnoredEvent(ev){ return isIgnoredEventPure(ev, IGNORED_PHRASES); }`
+  - `cleanText(text)` -> `cleanTextPure(text, maxTextLength)` + `function cleanText(text){ return cleanTextPure(text, CONFIG.maxTextLength); }`
+- **Drift gate:** `src/lib/generated.test.js` regenerates both files in memory and fails if a committed file differs (EOL-normalized). `bun test .` runs it, so CI blocks any PR where a generated file was hand-edited or the author forgot to run `bun run build`.
 
-The exempt layers get a different safety net: the Liquid render and DOM-building glue in `full.liquid`, and the Google-service calls in the `.gs` (`CalendarApp`, `CacheService`, `UrlFetchApp`), are verified by the local `trmnlp serve` visual run and the on-screen diagnostic overlay, not by unit tests.
+The exempt layers keep their non-unit safety net: the Liquid render and DOM-building glue in `full.liquid`, and the Google-service calls in the `.gs` (`CalendarApp`, `CacheService`, `UrlFetchApp`), are verified by the local `trmnlp serve` visual run and the on-screen diagnostic overlay.
 
-**Rejected alternative:** a build step that bundles `src/lib` into `full.liquid` (single source, no duplication). Rejected because it adds tooling this no-build plugin deliberately avoids and risks breaking the live paste-in template; the duplication is small and covered by tests plus explicit sync rules.
+**Rejected alternative:** keep a hand-maintained inline copy in each shipped file and rely on a written "keep in sync" rule (the previous version of this ADR). Rejected because the two copies drift silently: a change to one that the test does not see leaves the live copy wrong. The build step removes the second copy entirely, and the drift test enforces it, for the cost of one small dependency-free script.
 
 ## Consequences
 
 **Positive:**
 
-- The pure logic has a real red-green test gate (`bun test .`) that CI enforces, without touching how the template or the `.gs` ship.
-- The exempt UI/service layers are honestly marked and covered by visual/diagnostic checks instead of fake unit tests.
+- One tested source of truth. The generated files cannot drift from `src/lib`: the drift test fails if they do.
+- Call sites are untouched, so the shipped runtime behavior is identical to the hand-written original (wrappers restore the two changed signatures).
+- The exempt UI/service layers are still honestly marked and covered by visual/diagnostic checks, not fake unit tests.
 
 **Trade-offs and follow-up:**
 
-- Two copies of each helper can drift. A change that edits one and not the other passes CI (the test only sees `src/lib`) while the live copy is wrong. Always edit both; a future build step (the rejected alternative) is the only way to remove the duplication.
+- Deploying now has one extra step: run `bun run build`, then paste the generated `src/full.liquid` / `.gs` (never edit those directly). The pre-commit hook regenerates and stages them; the drift test is the backstop.
+- A helper that is genuinely not pure (closes over template/`.gs` state) needs a wrapper in `build.mjs`, as `isIgnoredEvent` and `cleanText` do.

@@ -31,8 +31,9 @@ The people who read your output may read English as a second language and may be
 
 | Task | Command | Notes |
 |---|---|---|
-| Run all tests | `bun test .` | Bun's test runner; discovers every `*.test.js`. What CI runs. No install needed. |
-| Run one area's tests | `bun test src/lib` | The extracted pure helpers. |
+| Build generated files | `bun run build` | Inlines `src/lib` helpers into the committed `src/full.liquid` and the `.gs` (from their `*.template` shells). Run after editing `src/lib` or a template. |
+| Run all tests | `bun test .` | Bun's test runner; discovers every `*.test.js`. What CI runs. Includes the generated-file drift test. No install needed. |
+| Run one area's tests | `bun test src/lib` | The pure helpers (single source). |
 | Local visual preview | `trmnlp serve` | Ruby gem `trmnl_preview`; serves a local render with `.trmnlp.yml` sample data. Human-run; see README. |
 
 There is no formatter or linter (deliberate; see ADR 0005). Whenever you need to confirm the code still passes, delegate to the **validate** agent (it runs `bun test .` the way CI does).
@@ -49,11 +50,13 @@ There is no formatter or linter (deliberate; see ADR 0005). Whenever you need to
 
 ## Key Files
 
-- `src/full.liquid` - Production template (paste into TRMNL markup editor). Its inline JS is the render logic; the pure helpers are also extracted to `src/lib/` for testing.
-- `src/lib/` - Extracted pure helpers with `bun test` suites; the tested source of truth for logic that is also inlined in `full.liquid` and the `.gs` (see ADR 0006 and `src/AGENTS.md`).
+- `src/full.liquid` - **Generated** production template to paste into TRMNL (do not edit). Built from `src/full.liquid.template` + `src/lib` by `bun run build`.
+- `src/full.liquid.template` - Hand-edited shell for `full.liquid`; one `@generated:helpers` marker where the build inlines the `src/lib` helpers.
+- `src/lib/` - The only hand-edited copy of the pure helpers, each with a `bun test` suite; the single source inlined into `full.liquid` and the `.gs` by the build (see ADR 0006 and `src/AGENTS.md`).
+- `build.mjs` - The build step (`bun run build`); inlines `src/lib` into both generated files.
 - `src/settings.yml` - Plugin settings + polling URLs for trmnlp local dev
 - `src/form_fields.yml` - Plugin form fields shown when installing the recipe
-- `src/middleware/calendar_weather_proxy.gs` - Apps Script middleware (deployed manually at script.google.com; setup in `MIDDLEWARE_SETUP.md`; area doc in `src/middleware/AGENTS.md`)
+- `src/middleware/calendar_weather_proxy.gs` - **Generated** Apps Script middleware to paste at script.google.com (do not edit; built from `...gs.template` + `src/lib/middleware.js`). Setup in `MIDDLEWARE_SETUP.md`; area doc in `src/middleware/AGENTS.md`.
 - `.trmnlp.yml` - Local dev config with sample data
 
 ## Patterns
@@ -76,9 +79,9 @@ Area-specific gotchas live in `src/AGENTS.md` (the template) and `src/middleware
 
 Develop new behavior **test-first, red-green**: write a failing test that pins the behavior you want (**red**), make it pass with the smallest change (**green**), then clean up with the test as your safety net. A bug fix starts with a test that reproduces the bug.
 
-- **Testable:** the pure logic extracted into `src/lib/` (time parsing, overlap layout, ignored-event matching, the triple-encoded JSON recovery, `cleanText` truncation, cache key and forecast URL building). Tests are `src/lib/*.test.js`, run with `bun test .`.
-- **Exempt:** the Liquid render, the DOM-building glue in `full.liquid`, and the Google-service calls in the `.gs` (CalendarApp, CacheService, UrlFetchApp). Their safety net is the local `trmnlp serve` visual run plus the on-screen diagnostic overlay.
-- **Critical:** `src/lib/` is a COPY of logic that also lives inline in `full.liquid` and the `.gs` (there is no build step to import from). When you change either copy, change both and keep them behavior-identical. See ADR 0006.
+- **Testable:** the pure logic in `src/lib/` (time parsing, overlap layout, ignored-event matching, the triple-encoded JSON recovery, `cleanText` truncation, cache key and forecast URL building). Tests are `src/lib/*.test.js`, run with `bun test .`.
+- **Exempt:** the Liquid render, the DOM-building glue in `full.liquid.template`, and the Google-service calls in the `.gs` (CalendarApp, CacheService, UrlFetchApp). Their safety net is the local `trmnlp serve` visual run plus the on-screen diagnostic overlay.
+- **Critical:** `src/lib/` is the single source of the pure helpers; `bun run build` inlines them into the generated `full.liquid` and `.gs`. Never edit those generated files. Change `src/lib` (or a `*.template`), run `bun run build`, and the drift test enforces the rest. See ADR 0006.
 
 The gate: CI runs `bun test .` on every PR, and the repo ruleset "Requirements for merge" blocks merging until the `checks` check is green.
 
@@ -96,7 +99,7 @@ Each kind of knowledge has one home. Write a change in the home that matches it;
 | Home | Loaded | Holds |
 |------|--------|-------|
 | `AGENTS.md` | Every session | The map: architecture facts, conventions, gotchas, and the ADR index. Points to the homes below; does not repeat their depth. (`CLAUDE.md` is a one-line `@AGENTS.md` shim.) |
-| `src/AGENTS.md` | On demand, when working in the template | The `full.liquid` template's rendering conventions and gotchas, and the `src/lib` sync rule. (Its `CLAUDE.md` is a one-line shim.) |
+| `src/AGENTS.md` | On demand, when working in the template | The template's rendering conventions and gotchas, and the `src/lib` single-source + build rule. (Its `CLAUDE.md` is a one-line shim.) |
 | `src/middleware/AGENTS.md` | On demand, when working in the middleware | The Apps Script proxy's conventions and gotchas. (Its `CLAUDE.md` is a one-line shim.) |
 | `.claude/skills/<name>/SKILL.md` | On demand, when the task matches | One procedure: how to do X. |
 | `adr/NNNN-*.md` | On demand, via adr-checker | One architectural decision and its why. |
@@ -126,7 +129,7 @@ ADRs live in `adr/`. Each records one architectural decision or cross-cutting st
 | [0003](adr/0003-full-view-only-layout.md) | Full-view-only layout; the other view templates are stubs |
 | [0004](adr/0004-two-bit-grayscale-palette.md) | Design to the 4-shade 2-bit grayscale palette; no dithered colors |
 | [0005](adr/0005-no-code-formatter.md) | No code formatter or linter; conventions and tests instead |
-| [0006](adr/0006-extracted-testable-helpers-with-inline-copies.md) | Pure helpers extracted to `src/lib` as the tested source of truth; `full.liquid` and the `.gs` keep in-sync inline copies |
+| [0006](adr/0006-extracted-testable-helpers-with-inline-copies.md) | Pure helpers live only in `src/lib` (single tested source); a build step inlines them into the generated `full.liquid` and `.gs`, and a drift test enforces it |
 
 ## GitHub issues, PRs, and other artifacts
 

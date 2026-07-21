@@ -73,6 +73,8 @@ YOUR_SCRIPT_URL?token=YOUR_SECRET_TOKEN&src=aqi&lat=YOUR_LAT&lon=YOUR_LON&tz=YOU
 3. Copy the entire contents of [`src/full.liquid`](src/full.liquid) and paste it in
 4. Save
 
+> `src/full.liquid` and `src/middleware/calendar_weather_proxy.gs` are **generated** files, ready to paste as-is. Do not edit them by hand. If you change the shared logic in `src/lib/` or a `*.template` file, run `bun run build` first to regenerate them (see [Local development](#local-development)).
+
 ### Step 4: Test
 
 1. Click **Force Refresh** on the plugin page
@@ -147,9 +149,19 @@ trmnlp serve
 
 The `.trmnlp.yml` file includes sample data. The template auto-detects the trmnlp environment and reads data from custom fields.
 
+### Building the deployable files
+
+`src/full.liquid` and `src/middleware/calendar_weather_proxy.gs` are generated. The shared pure logic lives once in `src/lib/`, and a build step inlines it into those two files (from their `*.template` shells). After changing anything in `src/lib/` or a `*.template`, regenerate with [Bun](https://bun.sh):
+
+```bash
+bun run build
+```
+
+Then paste the regenerated `src/full.liquid` into the TRMNL markup editor and the regenerated `src/middleware/calendar_weather_proxy.gs` into the Apps Script editor. Never edit the two generated files directly; a test fails if they drift from the build output.
+
 ### Running the tests
 
-The pure logic (time parsing, overlap layout, ignored-event matching, JSON recovery, text cleanup) is extracted into `src/lib/` and covered by unit tests. Run them with [Bun](https://bun.sh):
+The pure logic (time parsing, overlap layout, ignored-event matching, JSON recovery, text cleanup) lives in `src/lib/` and is covered by unit tests. Run them with [Bun](https://bun.sh):
 
 ```bash
 bun test .
