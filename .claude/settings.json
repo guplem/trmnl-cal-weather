@@ -22,12 +22,7 @@
       "Bash(gh label *)"
     ],
     "ask": [],
-    "deny": [
-      "Read(**/.env.local)",
-      "Read(**/.env.private)",
-      "Read(**/.env.secrets)",
-      "Read(**/secrets/**)"
-    ]
+    "deny": []
   },
   "hooks": {
     "PostToolUse": [
