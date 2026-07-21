@@ -23,6 +23,7 @@ The people who read your output may read English as a second language and may be
 
 - **Short sentences, one idea each.** Use common words. Avoid idioms, slang, and cultural references.
 - **Lead with the answer**, then only the detail that changes what the reader does. Cut filler and hedging. Do not use em dashes.
+- **Assume a short attention span.** The reader usually skims to make a quick decision (which PR to review, which issue to pick), with little context and little time; put the single most important thing first, and make each part land even if they stop after the first line.
 - **Gloss each jargon term, acronym, or tool/library name on first use** in one short clause, or pick a simpler word.
 - **Explain a concept briefly before going deeper.** Do not assume a flow, tool, or pattern is already known.
 - **Assume junior-level knowledge of the area.** Name the things you reference (files, commands, terms) instead of assuming the reader can guess.
