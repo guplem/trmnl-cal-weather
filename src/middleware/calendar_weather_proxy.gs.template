@@ -1,4 +1,3 @@
-// GENERATED FILE - do not edit directly. Edit src/lib/middleware.js and src/middleware/calendar_weather_proxy.gs.template, then run `bun run build`.
 /**
  * TRMNL Calendar + Weather middleware (Google Apps Script).
  *
@@ -72,50 +71,7 @@ const MIDDLEWARE_VERSION = 5;
 
 const ISO_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
 
-/**
- * Strip HTML tags, collapse whitespace, and truncate to a maximum length,
- * appending "..." when truncated.
- * @param {string} text - raw text, may contain HTML
- * @param {number} maxTextLength - truncation limit (CONFIG.maxTextLength in the .gs)
- * @returns {string}
- */
-function cleanTextPure(text, maxTextLength) {
-  if (!text) return '';
-  const stripped = String(text).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-  return stripped.length > maxTextLength
-    ? stripped.substring(0, maxTextLength) + '...'
-    : stripped;
-}
-
-/**
- * Build the per-location cache key so different coordinates never mix responses.
- * @param {string} source - "cal", "weather", or "aqi"
- * @param {{lat:string|number, lon:string|number, tz:string}} location
- * @returns {string}
- */
-function cacheKey(source, location) {
-  return source + ':' + location.lat + ',' + location.lon + ',' + location.tz;
-}
-
-/**
- * Build the Open-Meteo forecast URL for a location.
- * @param {{lat:string|number, lon:string|number, tz:string}} location
- * @returns {string}
- */
-function forecastUrl(location) {
-  return 'https://api.open-meteo.com/v1/forecast' +
-    '?latitude=' + encodeURIComponent(location.lat) +
-    '&longitude=' + encodeURIComponent(location.lon) +
-    '&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max,sunrise,sunset,uv_index_max' +
-    '&hourly=temperature_2m,precipitation_probability' +
-    '&current=temperature_2m' +
-    '&timezone=' + encodeURIComponent(location.tz) +
-    '&forecast_days=7';
-}
-
-// Wrapper preserving the original inline signature cleanText(text): it
-// reads CONFIG.maxTextLength like the original inline definition did.
-function cleanText(text) { return cleanTextPure(text, CONFIG.maxTextLength); }
+// @generated:helpers
 
 function airQualityUrl(location) {
   return 'https://air-quality-api.open-meteo.com/v1/air-quality' +

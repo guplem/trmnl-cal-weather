@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Grep",
+      "Glob",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(find *)",
+      "Bash(git status*)",
+      "Bash(git log*)",
+      "Bash(git diff*)",
+      "Bash(git show*)",
+      "Bash(git branch*)",
+      "Bash(bun test*)",
+      "Bash(trmnlp *)",
+      "Bash(gh issue *)",
+      "Bash(gh pr *)",
+      "Bash(gh label *)"
+    ],
+    "ask": [],
+    "deny": []
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "case \"$CLAUDE_FILE\" in *src/lib/*.js) echo '[hook] src/lib is the single source of the pure helpers. Run `bun run build` to regenerate src/full.liquid and the .gs, update the matching *.test.js, then run `bun test .`. If you changed middleware.js logic, bump MIDDLEWARE_VERSION in the .gs.template (ADR 0006).' ;; *.template) echo '[hook] template changed. Run `bun run build` to regenerate the committed src/full.liquid / .gs, then `bun test .` (ADR 0006).' ;; *full.liquid|*.gs) echo '[hook] GENERATED FILE - do not edit directly. Edit src/lib/*.js or the matching *.template, then run `bun run build` (ADR 0006).' ;; esac"
+          }
+        ]
+      }
+    ]
+  }
+}

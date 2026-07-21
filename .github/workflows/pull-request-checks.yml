@@ -1,0 +1,39 @@
+name: Pull request checks
+
+# Runs the test suite on every pull request targeting the default branch and on
+# pushes to it. The repo ruleset "Requirements for merge" requires this job's
+# check ("checks"), so a PR cannot merge unless it passes. There is no formatter
+# or linter in this repo (ADR 0005), so the tests are the whole gate. The suite
+# includes the generated-file drift test (src/lib/generated.test.js), which runs
+# build.mjs in memory and fails if the committed src/full.liquid or .gs is stale
+# or hand-edited, so no separate build step is needed here (ADR 0006).
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+# A new push to the same branch/PR cancels the previous in-progress run.
+concurrency:
+  group: pr-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone repository to the runner machine
+        uses: actions/checkout@v4
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Run all tests
+        run: bun test .

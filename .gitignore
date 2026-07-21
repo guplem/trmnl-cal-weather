@@ -2,4 +2,8 @@
 .env.local
 *.json
 !package.json
+!.claude/settings.json
 node_modules/
+
+# Local PR-review scratch files written by the review-pr skill.
+.reviews/
