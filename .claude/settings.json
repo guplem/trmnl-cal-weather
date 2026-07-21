@@ -23,11 +23,9 @@
     ],
     "ask": [],
     "deny": [
-      "Read(**/.env)",
       "Read(**/.env.local)",
       "Read(**/.env.private)",
       "Read(**/.env.secrets)",
-      "Read(**/.clasprc.json)",
       "Read(**/secrets/**)"
     ]
   },
