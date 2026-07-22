@@ -45,11 +45,11 @@ Do **not** fetch "the newest N issues": `gh issue list --limit N` returns only t
 1. **Derive 2-4 keyword sets** from the issue intent (Step 3) and `CODE_CONTEXT`, each a few words, varied so together they cover how a duplicate might be worded: the feature or component name; the symptom or user-facing effect; the specific entity or code path. Each set must include the exact noun a person would put in the **title** -- the title is the strongest duplicate signal.
 2. **Search each set, relevance-ranked** (put the keywords BEFORE any qualifier, or `gh search` returns an empty list):
    ```bash
-   gh search issues --repo guplem/trmnl-cal-weather "<keywords> in:title" --limit 20 --json number,title,state,stateReason,url   # title-scoped: strongest signal
-   gh search issues --repo guplem/trmnl-cal-weather "<keywords>" --limit 30 --json number,title,state,stateReason,url            # title + body: differently worded duplicates
+   gh search issues --repo guplem/trmnl-cal-weather "<keywords> in:title" --limit 20 --json number,title,state,url   # title-scoped: strongest signal
+   gh search issues --repo guplem/trmnl-cal-weather "<keywords>" --limit 30 --json number,title,state,url            # title + body: differently worded duplicates
    ```
 3. **Recency backup, once**: `gh issue list --state all --limit 40 --json number,title,state,stateReason,labels`. It catches duplicates that use none of your keywords and brand-new issues the search index has not picked up yet (`gh search` is eventually consistent).
-4. **Compare intent, not wording.** `stateReason` separates `COMPLETED` from `NOT_PLANNED`; treat any `NOT_PLANNED` match as a **reopen candidate**, not a reason to create a duplicate (backlog issues are often closed as not-planned to reopen later).
+4. **Compare intent, not wording.** `gh search issues` returns `state` but **not** the close reason (`stateReason` is not a valid `--json` field for it, only for `gh issue list`/`gh issue view`). For a closed candidate that looks like a duplicate, resolve its reason with `gh issue view <n> --json stateReason` (the recency backup already returns it). A `NOT_PLANNED` reason means a **reopen candidate**, not a reason to create a duplicate (backlog issues are often closed as not-planned to reopen later).
 5. **If a likely duplicate exists**, ask via `AskUserQuestion`: stop (duplicate) / link it (related but different) / create anyway. **Prefer reopening a matching not-planned issue over creating a duplicate.**
 6. Store related issue numbers as `RELATED_ISSUES`.
 
