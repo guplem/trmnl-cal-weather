@@ -56,10 +56,16 @@ A gotcha may move into a skill only if a one-line warning stays inline in `AGENT
 
 When you discover something during a task that was **extremely hard to find, deeply non-obvious, and would save real time in future sessions**, persist it. This also applies when the user says **"every time"**, **"always"**, or **"never"**: persist it right away, not just for the current session.
 
+**Also persist when feedback on your own work reveals a standard or best practice you should have followed from the start** (a PR review comment, a user correction, a failed check). Ask "should I have known this?"; if yes, classify why the miss happened and fix the cause: guidance **already existed** (no change; you just missed it), guidance was **missing** (add it), or guidance was **weak or hard to find** (sharpen or relocate it).
+
+Write every persisted rule in the shared, version-controlled file that fits it:
+
 - A rule that guides **AI behavior or coding decisions** -> `AGENTS.md` (or the area doc, if it is area-specific).
 - A **procedure** ("how to do X") -> a skill.
 - A **new** architectural pattern or cross-cutting standard -> a new ADR; a **change** to an existing pattern -> update that ADR in place. The **adr-checker** agent writes both.
 - A **repeatable shell action triggered by a tool event** -> a Claude Code hook in `.claude/settings.json`.
+
+**Keep learnings in these shared files, never in your personal memory or the user's global config.** A lesson in memory or `~/.claude/CLAUDE.md` helps only you on this machine; teammates and their agents never see it, so the same mistake returns for them. The repo's committed docs are the only place a learning reaches the whole team.
 
 **Also add** a rule whenever the codebase does something in a way that differs from what an AI would naturally write. If the correct approach here is not the obvious one, a future agent will get it wrong without an explicit rule.
 
