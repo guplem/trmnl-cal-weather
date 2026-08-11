@@ -184,7 +184,7 @@ Before finalizing the draft, re-read it and apply:
 
 ### Communication style (critical for triage)
 
-The issue is read to be **chosen, not studied**: whoever triages skims it among many, with little context and little time, so if it is not instantly clear it gets skipped or misjudged. Write it in the repo's **Communicating with users** style (`AGENTS.md`) -- lead with the point (the TL;DR), assume a short attention span, one idea per sentence, define jargon, keep it skimmable.
+The issue is read to be **chosen, not studied**: whoever triages skims it among many, with little context and little time, so if it is not instantly clear it gets skipped or misjudged. Write it under the **Writing style** section of `AGENTS.md`, and lead with the point (the `TL;DR` line).
 
 ### Title options
 

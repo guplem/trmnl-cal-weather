@@ -16,7 +16,7 @@ These rules apply when you author or edit any AI-facing content in this repo: `A
 - **Write the rule, not the reminder.** A prompt is read fresh each time; it cannot nudge the model mid-task. Put everything needed for correctness up front, not buried in closing tips.
 - **Avoid round-number counts unless the count itself matters.** "Brainstorm 5-7 causes" is read as a hard range. Use "a handful", "several", or a range scaled to the task when breadth is the goal but the exact number is not.
 - **Trust effort, not scaffolding, for depth.** Do not write "think step by step" or "reason carefully" as a generic kick. Ask for depth only when the task truly needs it, and pair it with concrete structure.
-- **Write in plain English.** Short sentences, one idea each. Gloss any jargon, acronym, or tool name on first use in a short parenthetical. These files are read by humans and by agents, and the humans may read English as a second language.
+- **Follow the repo's writing style.** Every file here counts as a technical document, so both layers of the `AGENTS.md` "Writing style" section apply: Zinsser's four principles for all prose, and ASD-STE100 on top. That section is the one home for the rules; never restate them here.
 
 ## Instruction files are living
 
@@ -24,7 +24,9 @@ Every AI-facing file here is meant to be updated: `AGENTS.md` and area docs, ski
 
 ## Do not restate the user's global rules
 
-Some rules live in the user's global configuration (`~/.claude/CLAUDE.md`) and already apply to every project: for example, when the agent may commit, or the plain-English writing style. Do not copy those into a project file. Repeating a global rule bloats the always-loaded context and drifts out of sync with the source. Reference it if you must; do not duplicate it.
+Some rules live in the user's global configuration (`~/.claude/CLAUDE.md`) and already apply to every project: when the agent may commit, for example. Do not copy those into a project file. A repeated global rule bloats the always-loaded context and drifts out of sync with the source. Reference it if you must; do not duplicate it.
+
+The writing style is the deliberate exception. `AGENTS.md` states it in full, because a teammate who clones this repo may have no global configuration at all.
 
 ## Writing and restructuring AGENTS.md (the map-not-manual standard)
 
