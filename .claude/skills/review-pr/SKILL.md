@@ -145,7 +145,7 @@ Walk the findings index with `AskUserQuestion`:
 
 Build one review payload and post it in one API call. In `autonomous` mode, print one line first: "Posting autonomous verdict <EVENT> without human review, as requested via --autonomous."
 
-Write the review body and every comment in the repo's **Communicating with users** style (`AGENTS.md`): the author skims them to decide what to change, so lead with the point and keep each one short and concrete.
+Write the review body and every comment under the **Writing style** section of `AGENTS.md`: the author skims them to decide what to change, so lead with the point and keep each one short and concrete.
 
 **Event type**: `interactive` = what the user chose; `no-verdict` = always `COMMENT`; `autonomous` = from phase 4 (forced to `COMMENT` if `IS_AUTHOR`).
 

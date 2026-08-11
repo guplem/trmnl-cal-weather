@@ -17,9 +17,11 @@ Delegate to these agents at the right moment (each agent's own description says 
 
 Beyond these, spawn subagents freely: hand off research, code exploration, and parallel analysis so the files they read stay out of your own context. Give each subagent one task.
 
-## Communicating with users
+## Writing style
 
-The people who read your output may read English as a second language and may be new to the area. Write **every** message a person reads this way: chat replies, PR and issue text, review comments, and commit messages.
+The people who read your output may read English as a second language and may be new to the area. Two layers apply. This section is the one home for both: no other file restates them.
+
+**Layer 1 covers every piece of prose you write**: chat replies, PR and issue text, review comments, commit messages, and every document below. It follows Zinsser's four principles, which are simplicity, brevity, clarity, and humanity.
 
 - **Short sentences, one idea each.** Use common words. Avoid idioms, slang, and cultural references.
 - **Lead with the answer**, then only the detail that changes what the reader does. Cut filler and hedging. Do not use em dashes.
@@ -27,6 +29,17 @@ The people who read your output may read English as a second language and may be
 - **Gloss each jargon term, acronym, or tool/library name on first use** in one short clause, or pick a simpler word.
 - **Explain a concept briefly before going deeper.** Do not assume a flow, tool, or pattern is already known.
 - **Assume junior-level knowledge of the area.** Name the things you reference (files, commands, terms) instead of assuming the reader can guess.
+
+**Layer 2 adds ASD-STE100 on top, for technical documents only**: `AGENTS.md` and area docs, ADRs, `README.md`, skills, subagents, and code comments. ASD-STE100 (Simplified Technical English) is a controlled-English standard from the aerospace industry. A maintenance manual must carry one reading and one only, and these documents have the same job.
+
+- **Active voice only.** Name the actor: "the hook formats the file", not "the file gets formatted".
+- **One meaning per word, and the same word for the same thing every time.** Never swap in a synonym for variety.
+- **One instruction per sentence, and start the sentence with the verb.** Write "Run the migration", not "The migration should be run".
+- **No `-ing` verb form as a noun or as a sentence opener.** Write "Use the skill to create a branch", not "Creating a branch is done with the skill".
+- **About 20 words per sentence at most** (25 in descriptive text).
+- **Leave out no word that guards the meaning.** Write "the file that you changed" when "the file you changed" could be misread.
+
+Both layers cover prose only. Neither covers code identifiers or text you quote word for word.
 
 ## Commands
 
