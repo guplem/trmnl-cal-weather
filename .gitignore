@@ -7,3 +7,6 @@ node_modules/
 
 # Local PR-review scratch files written by the review-pr skill.
 .reviews/
+
+# Temporary git worktrees created by Claude Code subagents
+.claude/worktrees/
