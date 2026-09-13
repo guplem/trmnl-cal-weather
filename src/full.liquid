@@ -488,15 +488,15 @@ document.addEventListener("DOMContentLoaded", function() {
   // Calendar: try IDX_0 (production), then custom_fields (trmnlp)
   var calErr = null, calRawType = '';
   try {
-    var calParsed = JSON.parse(sanitizeJson(`{{ IDX_0 | json | replace: '<', '<' | replace: '`', '`' | replace: '${', '${' }}`));
+    var calParsed = JSON.parse(sanitizeJson(`{{ IDX_0 | json | replace: '<', '\u003c' | replace: '`', '\u0060' | replace: '${', '\u0024{' }}`));
     calRawType = typeof calParsed;
     calRaw = deepParse(calParsed);
   } catch(e) { calRaw = null; calErr = e.message; }
-  if (!hasCalData(calRaw)) { try { calRaw = deepParse(parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_0 | replace: '<', '<' | replace: '`', '`' | replace: '${', '${' }}`)); calErr = null; } catch(e) { if (!calErr) calErr = e.message; } }
+  if (!hasCalData(calRaw)) { try { calRaw = deepParse(parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_0 | replace: '<', '\u003c' | replace: '`', '\u0060' | replace: '${', '\u0024{' }}`)); calErr = null; } catch(e) { if (!calErr) calErr = e.message; } }
   // Weather: try IDX_1 (production + trmnlp polling), then custom_fields
   var wxErr = null;
-  try { weatherRaw = deepParseWeather(JSON.parse(sanitizeJson(`{{ IDX_1 | json | replace: '<', '<' | replace: '`', '`' | replace: '${', '${' }}`))); } catch(e) { weatherRaw = null; wxErr = e.message; }
-  if (!weatherRaw || !weatherRaw.daily) { try { weatherRaw = deepParseWeather(parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_1 | replace: '<', '<' | replace: '`', '`' | replace: '${', '${' }}`)); wxErr = null; } catch(e) { if (!wxErr) wxErr = e.message; } }
+  try { weatherRaw = deepParseWeather(JSON.parse(sanitizeJson(`{{ IDX_1 | json | replace: '<', '\u003c' | replace: '`', '\u0060' | replace: '${', '\u0024{' }}`))); } catch(e) { weatherRaw = null; wxErr = e.message; }
+  if (!weatherRaw || !weatherRaw.daily) { try { weatherRaw = deepParseWeather(parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_1 | replace: '<', '\u003c' | replace: '`', '\u0060' | replace: '${', '\u0024{' }}`)); wxErr = null; } catch(e) { if (!wxErr) wxErr = e.message; } }
 
   // === DIAGNOSTICS: collect issues for on-screen overlay ===
   function truncate(s, n) { return s.length > n ? s.substring(0, n) + '...' : s; }
@@ -641,8 +641,8 @@ document.addEventListener("DOMContentLoaded", function() {
   var uvMax = (daily.uv_index_max && daily.uv_index_max[0] != null) ? Math.round(daily.uv_index_max[0]) : null;
   var aqi = null;
   // Same script-breakout guard as the IDX_0/IDX_1 injections above.
-  try { var aqRaw = JSON.parse(sanitizeJson(`{{ IDX_2 | json | replace: '<', '<' | replace: '`', '`' | replace: '${', '${' }}`)); if(aqRaw && aqRaw.current) aqi = Math.round(aqRaw.current.european_aqi); } catch(e) {}
-  if (aqi===null) { try { var aqRaw2 = parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_2 | replace: '<', '<' | replace: '`', '`' | replace: '${', '${' }}`); if(aqRaw2 && aqRaw2.current) aqi = Math.round(aqRaw2.current.european_aqi); } catch(e) {} }
+  try { var aqRaw = JSON.parse(sanitizeJson(`{{ IDX_2 | json | replace: '<', '\u003c' | replace: '`', '\u0060' | replace: '${', '\u0024{' }}`)); if(aqRaw && aqRaw.current) aqi = Math.round(aqRaw.current.european_aqi); } catch(e) {}
+  if (aqi===null) { try { var aqRaw2 = parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_2 | replace: '<', '\u003c' | replace: '`', '\u0060' | replace: '${', '\u0024{' }}`); if(aqRaw2 && aqRaw2.current) aqi = Math.round(aqRaw2.current.european_aqi); } catch(e) {} }
 
   // If no weather dates, derive from calendar events
   if (dates.length === 0 && todayStr) {
