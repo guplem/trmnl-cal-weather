@@ -24,11 +24,18 @@ The plugin includes a built-in diagnostic overlay that appears directly on the r
 | **Calendar: no data received** | IDX_0 (calendar polling URL) returned empty data. The middleware URL or token may be misconfigured. |
 | **Calendar: bad data received** | IDX_0 returned data but it could not be parsed as valid JSON. |
 | **Calendar: data truncated** | The calendar JSON was cut off mid-stream because TRMNL's data size limit was exceeded. Reduce the number of selected calendars or lower `daysAhead`/`maxTextLength` in the middleware CONFIG. |
+| **Calendar: poll returned text** | The `src=cal` URL answered with text instead of JSON, usually a Google error page. Open the URL in a browser and check the Apps Script Executions log. |
+| **Calendar: poll failed** | TRMNL could not parse the `src=cal` response at all and stored an empty array. Same cause and same check as "poll returned text". |
+| **Calendar: middleware cache write failed** | The middleware could not write its cache, usually because the calendar payload is over the 100 KB `CacheService` limit. Every poll then pays a slow live rebuild and may hit TRMNL's 30s timeout. Lower `daysAhead` or `maxTextLength` in the middleware CONFIG, or select fewer calendars. |
+| **Calendar: API error** | The middleware answered with an `{"error": ...}` object. The message names the cause; a token mismatch and missing URL parameters are the common ones. |
 | **Calendar: unexpected format** | IDX_0 returned data but it doesn't contain the expected `events` array or `data.events` structure. |
-| **Calendar: data received but 0 events** | The middleware responded correctly but the events array is empty. Check that your calendars are checked ("selected") in Google Calendar. |
+| **Calendar: 0 events** | The middleware responded correctly but the events array is empty. Check that your calendars are checked ("selected") in Google Calendar. |
 | **Weather: no data received** | IDX_1 (weather polling URL) returned empty data. Check the `src=weather` polling URL for typos. |
 | **Weather: bad data received** | IDX_1 returned data but it could not be parsed as valid JSON. |
 | **Weather: data truncated** | The weather JSON was cut off mid-stream because TRMNL's data size limit was exceeded. |
+| **Weather: poll returned text** | The `src=weather` URL answered with text instead of JSON. Same check as the calendar version. |
+| **Weather: poll failed** | TRMNL could not parse the `src=weather` response and stored an empty array. |
+| **Weather: unexpected format** | IDX_1 returned data but it has no `daily` object. |
 
 The overlay also shows the raw structure of the received data (truncated) to help identify format mismatches.
 
@@ -44,7 +51,7 @@ Open your calendar polling URL directly in a browser:
 YOUR_SCRIPT_URL?token=YOUR_SECRET_TOKEN&src=cal&tz=YOUR_TIMEZONE
 ```
 
-You should see JSON with `data.events` (array), `data.calendar_names`, `data.today_in_tz`, and `data.first_day`. If instead you see:
+You should see JSON with `data.events` (array), `data.calendar_names`, `data.today_in_tz`, `data.first_day`, and `data.middleware_version` (the deployed code version). A `data.cache_write_error` field appears only when the middleware could not cache the payload. If instead you see:
 
 | Response | Cause |
 |----------|-------|
