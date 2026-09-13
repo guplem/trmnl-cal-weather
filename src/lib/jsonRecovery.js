@@ -38,6 +38,16 @@ export function parseLiquid(str) { return JSON.parse(sanitizeJson(str.replace(/ 
 export function hasCalData(obj) { return obj && typeof obj === 'object' && ((obj.data && obj.data.events) || obj.events); }
 
 /**
+ * True when TRMNL stored nothing usable for a polling slot. TRMNL keeps an
+ * empty array for a URL whose response it could not parse as JSON, and the
+ * middleware always answers with an object, so `[]` means the poll failed
+ * rather than that the data has an unexpected shape.
+ * @param {*} raw
+ * @returns {boolean}
+ */
+export function isFailedPollingSlot(raw) { return Array.isArray(raw) && raw.length === 0; }
+
+/**
  * Recover the calendar payload from raw data that may be double- or
  * triple-encoded JSON (a string inside a string) and may wrap the events one
  * level deep. Returns the object that holds the events, or null when the raw

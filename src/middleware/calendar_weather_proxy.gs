@@ -68,7 +68,7 @@ const CONFIG = {
 // Bump on every code change and check it in the ?src=cal response: it proves
 // which code version the /exec URL is actually serving (see the Apps Script
 // deploy gotcha in src/middleware/AGENTS.md).
-const MIDDLEWARE_VERSION = 5;
+const MIDDLEWARE_VERSION = 6;
 
 const ISO_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
 
@@ -222,8 +222,13 @@ function buildAndCacheCalendar(key, tz) {
   try {
     CacheService.getScriptCache().put(key, JSON.stringify(payload), CONFIG.cacheMaxAgeSeconds);
   } catch (err) {
-    // Caching is an optimization; if put fails (e.g. payload over the cache
-    // value limit) still return the freshly built payload to the caller.
+    // A failed put is not harmless: the cache never warms, the 15-minute
+    // trigger achieves nothing, and every TRMNL poll pays the ~15s live build,
+    // which can pass TRMNL's fixed 30s timeout (ADR 0002). The usual cause is a
+    // payload over the 100 KB CacheService value limit. Report it in the
+    // payload so the template can show it, and still return the freshly built
+    // payload so this request keeps working.
+    payload.data.cache_write_error = String(err);
   }
   return payload;
 }

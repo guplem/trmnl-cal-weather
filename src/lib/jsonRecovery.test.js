@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { sanitizeJson, parseLiquid, hasCalData, deepParse } from "./jsonRecovery.js";
+import { sanitizeJson, parseLiquid, hasCalData, isFailedPollingSlot, deepParse } from "./jsonRecovery.js";
 
 // Characterization tests pinning the behavior also inlined in src/full.liquid.
 
@@ -46,9 +46,30 @@ describe("hasCalData", () => {
   });
 });
 
+describe("isFailedPollingSlot", () => {
+  it("is true for an empty array (what TRMNL stores for an unparseable response)", () => {
+    expect(isFailedPollingSlot([])).toBe(true);
+  });
+
+  it("is false for anything else", () => {
+    expect(isFailedPollingSlot([1])).toBe(false);
+    expect(isFailedPollingSlot({})).toBe(false);
+    expect(isFailedPollingSlot(null)).toBe(false);
+    expect(isFailedPollingSlot(undefined)).toBe(false);
+    expect(isFailedPollingSlot({ data: { events: [] } })).toBe(false);
+  });
+});
+
 describe("deepParse", () => {
   it("returns null for null input", () => {
     expect(deepParse(null)).toBeNull();
+  });
+
+  // The template calls isFailedPollingSlot on deepParse's output, not on the raw
+  // value, so the empty array that TRMNL stores for a failed poll must survive.
+  it("passes an empty array through unchanged", () => {
+    expect(deepParse([])).toEqual([]);
+    expect(isFailedPollingSlot(deepParse([]))).toBe(true);
   });
 
   it("parses a single-encoded JSON string", () => {

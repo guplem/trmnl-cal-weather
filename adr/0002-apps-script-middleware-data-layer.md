@@ -13,6 +13,7 @@ Serve all three data sources from one Google Apps Script web app (`src/middlewar
 
 - It reads Google Calendars directly with `CalendarApp`, so the TRMNL native Google Calendar plugin is no longer involved and the playlist pause cannot freeze events.
 - It answers TRMNL instantly from `CacheService`. A time-driven trigger (`refreshUpstreamCaches`, every 15 minutes) rebuilds the calendar payload and warms the Open-Meteo caches, so a poll never waits on a live upstream. If an upstream is slow or down, the last good cached copy keeps serving (`cacheMaxAgeSeconds` = 21600, the 6h CacheService maximum).
+- If the `CacheService` write itself fails (usually a calendar payload over its 100 KB value limit), the cache never warms and every poll pays the live build instead. The `?src=cal` response then carries `data.cache_write_error` (the error text) so the template can surface it as a diagnostic, instead of the failure staying silent.
 - The `?src=cal` response mimics the shape of TRMNL's calendar `/data` endpoint, so the template parses the middleware output and the legacy direct output identically.
 
 **Rejected alternative:** TRMNL native Google Calendar plugin + direct Open-Meteo URLs. Rejected because the playlist pause freezes calendar data and the 30s timeout trips on slow Open-Meteo responses and the ~15s live calendar build; neither limit can be configured away on the TRMNL side.

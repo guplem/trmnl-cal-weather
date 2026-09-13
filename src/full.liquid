@@ -402,6 +402,16 @@ document.addEventListener("DOMContentLoaded", function() {
   function hasCalData(obj) { return obj && typeof obj === 'object' && ((obj.data && obj.data.events) || obj.events); }
 
   /**
+   * True when TRMNL stored nothing usable for a polling slot. TRMNL keeps an
+   * empty array for a URL whose response it could not parse as JSON, and the
+   * middleware always answers with an object, so `[]` means the poll failed
+   * rather than that the data has an unexpected shape.
+   * @param {*} raw
+   * @returns {boolean}
+   */
+  function isFailedPollingSlot(raw) { return Array.isArray(raw) && raw.length === 0; }
+
+  /**
    * Recover the calendar payload from raw data that may be double- or
    * triple-encoded JSON (a string inside a string) and may wrap the events one
    * level deep. Returns the object that holds the events, or null when the raw
@@ -463,34 +473,72 @@ document.addEventListener("DOMContentLoaded", function() {
     return raw;
   }
   var calRaw, weatherRaw, diag = [];
-  // Calendar: try IDX_0 (production), then custom_fields (trmnlp)
-  var calErr = null, calRawType = '';
+  // Every injected value below carries the same Liquid replace chain, and it
+  // must stay on every injection point. A polled URL can answer with an HTML
+  // error page instead of JSON. Liquid's `json` filter escapes quotes and
+  // backslashes but not `<`, so a literal `</script>` in that page would end
+  // this script element and render the whole screen as garbled text. The chain
+  // rewrites the three characters that can escape this context as JavaScript
+  // unicode escapes: `<` (no `<` reaches the HTML parser, so nothing can close
+  // the script element), the backtick (cannot end the template literal), and
+  // `${` (cannot start an interpolation). The template literal turns each
+  // escape back into the original character before JSON.parse runs, so the
+  // parsed value is unchanged. A backslash pair already in the JSON is
+  // consumed as a pair, so it cannot merge with an escape we insert.
+  // An empty slot and a truncated payload both make JSON.parse throw
+  // "Unexpected end of JSON input", so the emptiness is read from the rendered
+  // text instead of guessed from the message.
+  function isBlankLiteral(s) { var t = String(s).trim(); return t === '' || t === 'null'; }
+  // A string payload that opens like JSON was cut off mid-stream; anything else
+  // (an HTML error page) is not JSON at all. The two need opposite advice.
+  function looksLikeJson(s) { var c = String(s).trim().charAt(0); return c === '{' || c === '['; }
+  // Shown only under trmnlp, where custom_fields is the real data source.
+  function localParseNote(err) { return err ? ' Local trmnlp custom_fields parse error: ' + err + '.' : ''; }
+
+  // Calendar: try IDX_0 (production), then custom_fields (trmnlp). The
+  // custom_fields field is empty in production, so its own parse error says
+  // nothing about the poll and must never reach calErr: letting it through made
+  // every failed poll report "data truncated" and tell the reader to cut
+  // daysAhead. It is kept separately so trmnlp still sees it.
+  var calErr = null, calRawType = '', calFallbackErr = null;
+  var calLiteral = `{{ IDX_0 | json | replace: '<', '\u003c' | replace: '`', '\u0060' | replace: '${', '\u0024{' }}`;
   try {
-    var calParsed = JSON.parse(sanitizeJson(`{{ IDX_0 | json }}`));
+    var calParsed = JSON.parse(sanitizeJson(calLiteral));
     calRawType = typeof calParsed;
     calRaw = deepParse(calParsed);
-  } catch(e) { calRaw = null; calErr = e.message; }
-  if (!hasCalData(calRaw)) { try { calRaw = deepParse(parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_0 }}`)); calErr = null; } catch(e) { if (!calErr) calErr = e.message; } }
+  } catch(e) { calRaw = null; if (!isBlankLiteral(calLiteral)) calErr = e.message; }
+  if (!hasCalData(calRaw)) { try { calRaw = deepParse(parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_0 | replace: '<', '\u003c' | replace: '`', '\u0060' | replace: '${', '\u0024{' }}`)); calErr = null; calFallbackErr = null; } catch(e) { calFallbackErr = e.message; } }
   // Weather: try IDX_1 (production + trmnlp polling), then custom_fields
-  var wxErr = null;
-  try { weatherRaw = deepParseWeather(JSON.parse(sanitizeJson(`{{ IDX_1 | json }}`))); } catch(e) { weatherRaw = null; wxErr = e.message; }
-  if (!weatherRaw || !weatherRaw.daily) { try { weatherRaw = deepParseWeather(parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_1 }}`)); wxErr = null; } catch(e) { if (!wxErr) wxErr = e.message; } }
+  var wxErr = null, wxRawType = '', wxFallbackErr = null;
+  var wxLiteral = `{{ IDX_1 | json | replace: '<', '\u003c' | replace: '`', '\u0060' | replace: '${', '\u0024{' }}`;
+  try { var wxParsed = JSON.parse(sanitizeJson(wxLiteral)); wxRawType = typeof wxParsed; weatherRaw = deepParseWeather(wxParsed); } catch(e) { weatherRaw = null; if (!isBlankLiteral(wxLiteral)) wxErr = e.message; }
+  if (!weatherRaw || !weatherRaw.daily) { try { weatherRaw = deepParseWeather(parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_1 | replace: '<', '\u003c' | replace: '`', '\u0060' | replace: '${', '\u0024{' }}`)); wxErr = null; wxFallbackErr = null; } catch(e) { wxFallbackErr = e.message; } }
 
   // === DIAGNOSTICS: collect issues for on-screen overlay ===
   function truncate(s, n) { return s.length > n ? s.substring(0, n) + '...' : s; }
   function rawPreview(obj) { try { return truncate(JSON.stringify(obj), 200); } catch(e) { return String(obj).substring(0, 200); } }
 
+  // Both polled sources report the same two failures, so they share one wording.
+  function pollFailedDetail(src) { return 'TRMNL stored an empty array for the ' + src + ' URL, which means the poll did not return JSON. Most often the URL answered with a Google error page instead of the middleware response. Open the ' + src + ' polling URL in a browser and check the Apps Script Executions log.'; }
+  function pollReturnedTextDetail(src) { return 'The ' + src + ' URL answered with text that is not JSON, most often a Google error page instead of the middleware response. Open the ' + src + ' polling URL in a browser and check the Apps Script Executions log.'; }
+
   // Calendar diagnostics
   function isTruncationError(err) { return err && /unexpected.*(end|eof)|end of/i.test(err); }
+  // One unwrap for the whole file: the payload holds the fields at `data` in
+  // production and at the top level in the trmnlp mock.
+  var calData = calRaw && typeof calRaw === 'object' ? (calRaw.data || calRaw) : null;
+  // A string payload means the slot held text, not an object. It is truncated
+  // JSON when it opens like JSON, and an error page otherwise.
+  var calIsText = calRawType === 'string';
   if (!calRaw) {
-    if (isTruncationError(calErr)) {
+    if (isTruncationError(calErr) || (calIsText && looksLikeJson(calParsed))) {
       diag.push({label: 'Calendar: data truncated', detail: 'The calendar JSON was cut off mid-stream, which means TRMNL\'s data size limit was exceeded. Reduce the number of selected calendars or lower daysAhead/maxTextLength in the middleware CONFIG.'});
+    } else if (calIsText) {
+      diag.push({label: 'Calendar: poll returned text', detail: pollReturnedTextDetail('src=cal')});
     } else if (calErr) {
-      var calDetail = 'Parse error: ' + calErr;
-      if (calRawType === 'string') calDetail += ' Note: IDX_0 was a string (possible double-encoding).';
-      diag.push({label: 'Calendar: bad data received', detail: calDetail});
+      diag.push({label: 'Calendar: bad data received', detail: 'Parse error: ' + calErr});
     } else {
-      diag.push({label: 'Calendar: no data received', detail: 'IDX_0 is empty or null. Check the middleware URL and token in the polling URLs.'});
+      diag.push({label: 'Calendar: no data received', detail: 'IDX_0 is empty or null. Check the middleware URL and token in the polling URLs.' + localParseNote(calFallbackErr)});
     }
   } else if (calRaw.error) {
     // API returned an error object (e.g., {"error": "Plugin setting not found"})
@@ -501,24 +549,35 @@ document.addEventListener("DOMContentLoaded", function() {
     else if (/missing/i.test(errMsg)) hint = 'The polling URL is missing required parameters (tz for cal; lat/lon/tz for weather/aqi).';
     else hint = 'Check the middleware URL and token in your plugin settings.';
     diag.push({label: 'Calendar: API error', detail: errMsg + '. ' + hint});
+  } else if (isFailedPollingSlot(calRaw)) {
+    diag.push({label: 'Calendar: poll failed', detail: pollFailedDetail('src=cal')});
   } else if (!hasCalData(calRaw)) {
     var keys = Object.keys(calRaw);
     var dataKeys = calRaw.data ? Object.keys(calRaw.data) : [];
     diag.push({label: 'Calendar: unexpected format', detail: 'Data received but no "events" array found. Top-level keys: [' + keys.join(', ') + ']' + (dataKeys.length ? '. data.* keys: [' + dataKeys.join(', ') + ']' : ''), raw: rawPreview(calRaw)});
   } else {
-    var cd0 = calRaw.data || calRaw;
-    var evts0 = cd0.events || [];
+    var evts0 = calData.events || [];
     if (Array.isArray(evts0) && evts0.length === 0) {
       diag.push({label: 'Calendar: 0 events', detail: 'The calendar responded but the events array is empty. Verify your calendars are checked ("selected") in Google Calendar or listed in CONFIG.calendarIds in the middleware.'});
     }
   }
+  // Not part of the chain above: a healthy events response can still carry this
+  // field, so it needs its own check.
+  if (calData && calData.cache_write_error) {
+    diag.push({label: 'Calendar: middleware cache write failed', detail: 'The middleware could not write its cache, so every poll pays a slow live rebuild and may hit TRMNL\'s 30s timeout. The usual cause is a calendar payload over the 100 KB CacheService limit. Lower daysAhead or maxTextLength in the middleware CONFIG, or select fewer calendars. Error: ' + calData.cache_write_error});
+  }
   // Weather diagnostics
-  if (!weatherRaw && isTruncationError(wxErr)) {
+  var wxIsText = wxRawType === 'string';
+  if (!weatherRaw && (isTruncationError(wxErr) || (wxIsText && looksLikeJson(wxParsed)))) {
     diag.push({label: 'Weather: data truncated', detail: 'The weather JSON was cut off mid-stream, which means TRMNL\'s data size limit was exceeded. Check the src=weather polling URL.'});
+  } else if (!weatherRaw && wxIsText) {
+    diag.push({label: 'Weather: poll returned text', detail: pollReturnedTextDetail('src=weather')});
   } else if (!weatherRaw && wxErr) {
     diag.push({label: 'Weather: bad data received', detail: 'Parse error: ' + wxErr});
   } else if (!weatherRaw) {
-    diag.push({label: 'Weather: no data received', detail: 'IDX_1 is empty or null. Check the src=weather polling URL.'});
+    diag.push({label: 'Weather: no data received', detail: 'IDX_1 is empty or null. Check the src=weather polling URL.' + localParseNote(wxFallbackErr)});
+  } else if (isFailedPollingSlot(weatherRaw)) {
+    diag.push({label: 'Weather: poll failed', detail: pollFailedDetail('src=weather')});
   } else if (!weatherRaw.daily) {
     diag.push({label: 'Weather: unexpected format', detail: 'Received data but no "daily" object. Keys: [' + Object.keys(weatherRaw).join(', ') + ']', raw: rawPreview(weatherRaw)});
   }
@@ -531,8 +590,8 @@ document.addEventListener("DOMContentLoaded", function() {
     var d = '<div class="cw-diag-overlay"><div class="cw-diag-title p--1">Diagnostic Info</div>';
     for (var i = 0; i < diag.length; i++) {
       d += '<div class="cw-diag-item p--1"><div class="cw-diag-label">' + diag[i].label + '</div>';
-      d += '<div>' + diag[i].detail + '</div>';
-      if (diag[i].raw) d += '<div class="cw-diag-raw">Raw: ' + diag[i].raw + '</div>';
+      d += '<div>' + esc(diag[i].detail) + '</div>';
+      if (diag[i].raw) d += '<div class="cw-diag-raw">Raw: ' + esc(diag[i].raw) + '</div>';
       d += '</div>';
     }
     d += '</div>';
@@ -548,7 +607,7 @@ document.addEventListener("DOMContentLoaded", function() {
   // === PARSE CALENDAR DATA ===
   var eventsByDate = {}, todayStr = "", calFriendlyNames = {}, firstDayOfWeek = 1;
   if (calRaw) {
-    var cd = calRaw.data || calRaw;
+    var cd = calData;
     var rawEvents = cd.events || [];
     calFriendlyNames = cd.calendar_names || {};
     todayStr = (cd.today_in_tz || "").substring(0, 10);
@@ -596,7 +655,7 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     }
   }
-  var eventsGrouped = Array.isArray((calRaw && (calRaw.data||calRaw).events)||[]);
+  var eventsGrouped = Array.isArray((calData && calData.events)||[]);
 
   // === PARSE WEATHER DATA (all optional) ===
   var daily = hasWeather ? weatherRaw.daily : {};
@@ -608,8 +667,9 @@ document.addEventListener("DOMContentLoaded", function() {
   var sunset = (daily.sunset && daily.sunset[0]) ? daily.sunset[0].substring(11,16) : null;
   var uvMax = (daily.uv_index_max && daily.uv_index_max[0] != null) ? Math.round(daily.uv_index_max[0]) : null;
   var aqi = null;
-  try { var aqRaw = JSON.parse(sanitizeJson(`{{ IDX_2 | json }}`)); if(aqRaw && aqRaw.current) aqi = Math.round(aqRaw.current.european_aqi); } catch(e) {}
-  if (aqi===null) { try { var aqRaw2 = parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_2 }}`); if(aqRaw2 && aqRaw2.current) aqi = Math.round(aqRaw2.current.european_aqi); } catch(e) {} }
+  // Same script-breakout guard as the IDX_0/IDX_1 injections above.
+  try { var aqRaw = JSON.parse(sanitizeJson(`{{ IDX_2 | json | replace: '<', '\u003c' | replace: '`', '\u0060' | replace: '${', '\u0024{' }}`)); if(aqRaw && aqRaw.current) aqi = Math.round(aqRaw.current.european_aqi); } catch(e) {}
+  if (aqi===null) { try { var aqRaw2 = parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_2 | replace: '<', '\u003c' | replace: '`', '\u0060' | replace: '${', '\u0024{' }}`); if(aqRaw2 && aqRaw2.current) aqi = Math.round(aqRaw2.current.european_aqi); } catch(e) {} }
 
   // If no weather dates, derive from calendar events
   if (dates.length === 0 && todayStr) {

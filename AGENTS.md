@@ -95,6 +95,7 @@ Develop new behavior **test-first, red-green**: write a failing test that pins t
 
 - **Testable:** the pure logic in `src/lib/` (time parsing, overlap layout, ignored-event matching, the triple-encoded JSON recovery, `cleanText` truncation, cache key and forecast URL building). Tests are `src/lib/*.test.js`, run with `bun test .`.
 - **Exempt:** the Liquid render, the DOM-building glue in `full.liquid.template`, and the Google-service calls in the `.gs` (CalendarApp, CacheService, UrlFetchApp). Their safety net is the local `trmnlp serve` visual run plus the on-screen diagnostic overlay.
+- **The exemption is about what a test needs, not about which file the code sits in.** A rule that lives in the template but needs no Liquid engine and no DOM is testable, so test it: read the file as text and assert the rule, the way `src/lib/scriptInjectionGuard.test.js` pins the script-breakout escape chain. Read the rule out of the file under test rather than restating it, or the test passes while the file is wrong.
 - **Critical:** `src/lib/` is the single source of the pure helpers; `bun run build` inlines them into the generated `full.liquid` and `.gs`. Never edit those generated files. Change `src/lib` (or a `*.template`), run `bun run build`, and the drift test enforces the rest. See ADR 0006.
 
 The gate: CI runs `bun test .` on every PR, and the repo ruleset "Requirements for merge" blocks merging until the `checks` check is green.
