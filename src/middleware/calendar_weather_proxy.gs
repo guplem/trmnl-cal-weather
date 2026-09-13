@@ -228,7 +228,7 @@ function buildAndCacheCalendar(key, tz) {
     // payload over the 100 KB CacheService value limit. Report it in the
     // payload so the template can show it, and still return the freshly built
     // payload so this request keeps working.
-    payload.data.cache_write_failed = String(err);
+    payload.data.cache_write_error = String(err);
   }
   return payload;
 }

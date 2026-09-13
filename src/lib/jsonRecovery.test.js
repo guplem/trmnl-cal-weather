@@ -51,20 +51,11 @@ describe("isFailedPollingSlot", () => {
     expect(isFailedPollingSlot([])).toBe(true);
   });
 
-  it("is false for a non-empty array", () => {
+  it("is false for anything else", () => {
     expect(isFailedPollingSlot([1])).toBe(false);
-  });
-
-  it("is false for an object", () => {
     expect(isFailedPollingSlot({})).toBe(false);
-  });
-
-  it("is false for null and undefined", () => {
     expect(isFailedPollingSlot(null)).toBe(false);
     expect(isFailedPollingSlot(undefined)).toBe(false);
-  });
-
-  it("is false for a valid calendar payload", () => {
     expect(isFailedPollingSlot({ data: { events: [] } })).toBe(false);
   });
 });
@@ -72,6 +63,13 @@ describe("isFailedPollingSlot", () => {
 describe("deepParse", () => {
   it("returns null for null input", () => {
     expect(deepParse(null)).toBeNull();
+  });
+
+  // The template calls isFailedPollingSlot on deepParse's output, not on the raw
+  // value, so the empty array that TRMNL stores for a failed poll must survive.
+  it("passes an empty array through unchanged", () => {
+    expect(deepParse([])).toEqual([]);
+    expect(isFailedPollingSlot(deepParse([]))).toBe(true);
   });
 
   it("parses a single-encoded JSON string", () => {
