@@ -278,8 +278,12 @@ document.addEventListener("DOMContentLoaded", function() {
   // Every injected value below carries the same Liquid replace chain, and it
   // must stay on every injection point. A polled URL can answer with an HTML
   // error page instead of JSON. Liquid's `json` filter escapes quotes and
-  // backslashes but not `<`, so a literal `</script>` in that page would end
-  // this script element and render the whole screen as garbled text. The chain
+  // backslashes but not `<`, so a script end tag inside that page would end
+  // this script element and render the whole screen as garbled text.
+  // Never write that end tag literally anywhere in this file, not even in a
+  // comment or a string: the HTML parser acts on the characters and ignores the
+  // JavaScript context. This comment shipped with the tag spelled out once and
+  // broke every screen. A test now enforces it. The chain
   // rewrites the three characters that can escape this context as JavaScript
   // unicode escapes: `<` (no `<` reaches the HTML parser, so nothing can close
   // the script element), the backtick (cannot end the template literal), and

@@ -37,7 +37,26 @@ const EXPECTED_CHAIN = [
   [DOLLAR + '{', BACKSLASH + 'u0024{'],
 ];
 
+const GENERATED = readFileSync(join(ROOT, 'src', 'full.liquid'), 'utf8');
+
 const injections = TEMPLATE.match(/\{\{[^}]*IDX_[0-9][^}]*\}\}/g) || [];
+
+// Inside a <script> element the HTML parser ends the element at the first
+// script end tag, whatever the JavaScript context. A JS comment or a string
+// literal does not protect it. Writing the sequence in a comment that explains
+// this very rule is how it got shipped once, so both files are checked: the
+// hand-edited template, and the generated file that also carries the inlined
+// src/lib helpers and their comments.
+describe('the template never ends its own script element early', () => {
+  // Split so this test file cannot fail the rule it enforces.
+  const SCRIPT_END = /<\/script/gi;
+
+  for (const [name, source] of [['src/full.liquid.template', TEMPLATE], ['src/full.liquid', GENERATED]]) {
+    test(name + ' holds one script end tag, the one that closes the block', () => {
+      expect((source.match(SCRIPT_END) || []).length).toBe(1);
+    });
+  }
+});
 
 function replacementsIn(injection) {
   return [...injection.matchAll(/replace: '(.*?)', '(.*?)'/g)].map((m) => [m[1], m[2]]);
