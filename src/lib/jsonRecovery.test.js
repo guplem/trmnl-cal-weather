@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { sanitizeJson, parseLiquid, hasCalData, deepParse } from "./jsonRecovery.js";
+import { sanitizeJson, parseLiquid, hasCalData, isFailedPollingSlot, deepParse } from "./jsonRecovery.js";
 
 // Characterization tests pinning the behavior also inlined in src/full.liquid.
 
@@ -43,6 +43,29 @@ describe("hasCalData", () => {
   it("is falsy for non-objects", () => {
     expect(hasCalData(null)).toBeFalsy();
     expect(hasCalData("string")).toBeFalsy();
+  });
+});
+
+describe("isFailedPollingSlot", () => {
+  it("is true for an empty array (what TRMNL stores for an unparseable response)", () => {
+    expect(isFailedPollingSlot([])).toBe(true);
+  });
+
+  it("is false for a non-empty array", () => {
+    expect(isFailedPollingSlot([1])).toBe(false);
+  });
+
+  it("is false for an object", () => {
+    expect(isFailedPollingSlot({})).toBe(false);
+  });
+
+  it("is false for null and undefined", () => {
+    expect(isFailedPollingSlot(null)).toBe(false);
+    expect(isFailedPollingSlot(undefined)).toBe(false);
+  });
+
+  it("is false for a valid calendar payload", () => {
+    expect(isFailedPollingSlot({ data: { events: [] } })).toBe(false);
   });
 });
 
