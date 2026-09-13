@@ -485,21 +485,34 @@ document.addEventListener("DOMContentLoaded", function() {
   // escape back into the original character before JSON.parse runs, so the
   // parsed value is unchanged. A backslash pair already in the JSON is
   // consumed as a pair, so it cannot merge with an escape we insert.
+  // An empty slot and a truncated payload both make JSON.parse throw
+  // "Unexpected end of JSON input", so the emptiness is read from the rendered
+  // text instead of guessed from the message.
+  function isBlankLiteral(s) { var t = String(s).trim(); return t === '' || t === 'null'; }
+  // A string payload that opens like JSON was cut off mid-stream; anything else
+  // (an HTML error page) is not JSON at all. The two need opposite advice.
+  function looksLikeJson(s) { var c = String(s).trim().charAt(0); return c === '{' || c === '['; }
+  // Shown only under trmnlp, where custom_fields is the real data source.
+  function localParseNote(err) { return err ? ' Local trmnlp custom_fields parse error: ' + err + '.' : ''; }
+
   // Calendar: try IDX_0 (production), then custom_fields (trmnlp). The
   // custom_fields field is empty in production, so its own parse error says
-  // nothing about the poll. Swallow it: letting it reach calErr made every
-  // failed poll report "data truncated" and tell the reader to cut daysAhead.
-  var calErr = null, calRawType = '';
+  // nothing about the poll and must never reach calErr: letting it through made
+  // every failed poll report "data truncated" and tell the reader to cut
+  // daysAhead. It is kept separately so trmnlp still sees it.
+  var calErr = null, calRawType = '', calFallbackErr = null;
+  var calLiteral = `{{ IDX_0 | json | replace: '<', '\u003c' | replace: '`', '\u0060' | replace: '${', '\u0024{' }}`;
   try {
-    var calParsed = JSON.parse(sanitizeJson(`{{ IDX_0 | json | replace: '<', '\u003c' | replace: '`', '\u0060' | replace: '${', '\u0024{' }}`));
+    var calParsed = JSON.parse(sanitizeJson(calLiteral));
     calRawType = typeof calParsed;
     calRaw = deepParse(calParsed);
-  } catch(e) { calRaw = null; calErr = e.message; }
-  if (!hasCalData(calRaw)) { try { calRaw = deepParse(parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_0 | replace: '<', '\u003c' | replace: '`', '\u0060' | replace: '${', '\u0024{' }}`)); calErr = null; } catch(e) {} }
+  } catch(e) { calRaw = null; if (!isBlankLiteral(calLiteral)) calErr = e.message; }
+  if (!hasCalData(calRaw)) { try { calRaw = deepParse(parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_0 | replace: '<', '\u003c' | replace: '`', '\u0060' | replace: '${', '\u0024{' }}`)); calErr = null; calFallbackErr = null; } catch(e) { calFallbackErr = e.message; } }
   // Weather: try IDX_1 (production + trmnlp polling), then custom_fields
-  var wxErr = null, wxRawType = '';
-  try { var wxParsed = JSON.parse(sanitizeJson(`{{ IDX_1 | json | replace: '<', '\u003c' | replace: '`', '\u0060' | replace: '${', '\u0024{' }}`)); wxRawType = typeof wxParsed; weatherRaw = deepParseWeather(wxParsed); } catch(e) { weatherRaw = null; wxErr = e.message; }
-  if (!weatherRaw || !weatherRaw.daily) { try { weatherRaw = deepParseWeather(parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_1 | replace: '<', '\u003c' | replace: '`', '\u0060' | replace: '${', '\u0024{' }}`)); wxErr = null; } catch(e) {} }
+  var wxErr = null, wxRawType = '', wxFallbackErr = null;
+  var wxLiteral = `{{ IDX_1 | json | replace: '<', '\u003c' | replace: '`', '\u0060' | replace: '${', '\u0024{' }}`;
+  try { var wxParsed = JSON.parse(sanitizeJson(wxLiteral)); wxRawType = typeof wxParsed; weatherRaw = deepParseWeather(wxParsed); } catch(e) { weatherRaw = null; if (!isBlankLiteral(wxLiteral)) wxErr = e.message; }
+  if (!weatherRaw || !weatherRaw.daily) { try { weatherRaw = deepParseWeather(parseLiquid(`{{ trmnl.plugin_settings.custom_fields_values.IDX_1 | replace: '<', '\u003c' | replace: '`', '\u0060' | replace: '${', '\u0024{' }}`)); wxErr = null; wxFallbackErr = null; } catch(e) { wxFallbackErr = e.message; } }
 
   // === DIAGNOSTICS: collect issues for on-screen overlay ===
   function truncate(s, n) { return s.length > n ? s.substring(0, n) + '...' : s; }
@@ -514,19 +527,18 @@ document.addEventListener("DOMContentLoaded", function() {
   // One unwrap for the whole file: the payload holds the fields at `data` in
   // production and at the top level in the trmnlp mock.
   var calData = calRaw && typeof calRaw === 'object' ? (calRaw.data || calRaw) : null;
+  // A string payload means the slot held text, not an object. It is truncated
+  // JSON when it opens like JSON, and an error page otherwise.
+  var calIsText = calRawType === 'string';
   if (!calRaw) {
-    // The value parsed, but into a string rather than an object, so the URL
-    // answered with text (usually a Google error page). Without this branch the
-    // case falls through to "no data received", which sends the reader to the
-    // polling URL and token instead of to the middleware.
-    if (calRawType === 'string') {
-      diag.push({label: 'Calendar: poll returned text', detail: pollReturnedTextDetail('src=cal')});
-    } else if (isTruncationError(calErr)) {
+    if (isTruncationError(calErr) || (calIsText && looksLikeJson(calParsed))) {
       diag.push({label: 'Calendar: data truncated', detail: 'The calendar JSON was cut off mid-stream, which means TRMNL\'s data size limit was exceeded. Reduce the number of selected calendars or lower daysAhead/maxTextLength in the middleware CONFIG.'});
+    } else if (calIsText) {
+      diag.push({label: 'Calendar: poll returned text', detail: pollReturnedTextDetail('src=cal')});
     } else if (calErr) {
       diag.push({label: 'Calendar: bad data received', detail: 'Parse error: ' + calErr});
     } else {
-      diag.push({label: 'Calendar: no data received', detail: 'IDX_0 is empty or null. Check the middleware URL and token in the polling URLs.'});
+      diag.push({label: 'Calendar: no data received', detail: 'IDX_0 is empty or null. Check the middleware URL and token in the polling URLs.' + localParseNote(calFallbackErr)});
     }
   } else if (calRaw.error) {
     // API returned an error object (e.g., {"error": "Plugin setting not found"})
@@ -555,14 +567,15 @@ document.addEventListener("DOMContentLoaded", function() {
     diag.push({label: 'Calendar: middleware cache write failed', detail: 'The middleware could not write its cache, so every poll pays a slow live rebuild and may hit TRMNL\'s 30s timeout. The usual cause is a calendar payload over the 100 KB CacheService limit. Lower daysAhead or maxTextLength in the middleware CONFIG, or select fewer calendars. Error: ' + calData.cache_write_error});
   }
   // Weather diagnostics
-  if (!weatherRaw && wxRawType === 'string') {
-    diag.push({label: 'Weather: poll returned text', detail: pollReturnedTextDetail('src=weather')});
-  } else if (!weatherRaw && isTruncationError(wxErr)) {
+  var wxIsText = wxRawType === 'string';
+  if (!weatherRaw && (isTruncationError(wxErr) || (wxIsText && looksLikeJson(wxParsed)))) {
     diag.push({label: 'Weather: data truncated', detail: 'The weather JSON was cut off mid-stream, which means TRMNL\'s data size limit was exceeded. Check the src=weather polling URL.'});
+  } else if (!weatherRaw && wxIsText) {
+    diag.push({label: 'Weather: poll returned text', detail: pollReturnedTextDetail('src=weather')});
   } else if (!weatherRaw && wxErr) {
     diag.push({label: 'Weather: bad data received', detail: 'Parse error: ' + wxErr});
   } else if (!weatherRaw) {
-    diag.push({label: 'Weather: no data received', detail: 'IDX_1 is empty or null. Check the src=weather polling URL.'});
+    diag.push({label: 'Weather: no data received', detail: 'IDX_1 is empty or null. Check the src=weather polling URL.' + localParseNote(wxFallbackErr)});
   } else if (isFailedPollingSlot(weatherRaw)) {
     diag.push({label: 'Weather: poll failed', detail: pollFailedDetail('src=weather')});
   } else if (!weatherRaw.daily) {
@@ -642,7 +655,7 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     }
   }
-  var eventsGrouped = Array.isArray((calRaw && (calRaw.data||calRaw).events)||[]);
+  var eventsGrouped = Array.isArray((calData && calData.events)||[]);
 
   // === PARSE WEATHER DATA (all optional) ===
   var daily = hasWeather ? weatherRaw.daily : {};
