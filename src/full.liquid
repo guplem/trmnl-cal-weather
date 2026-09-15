@@ -243,6 +243,12 @@
   .cw-diag-item { border-bottom: 1px solid #AAA; }
   .cw-diag-label { font-weight: bold; }
   .cw-diag-raw { font: 9px/1.2 monospace; color: #555; word-break: break-all; max-height: 60px; overflow: hidden; }
+  .cw-diag-note {
+    position: absolute; bottom: 2px; right: 3px; z-index: 100;
+    background: #fff; border: 1px solid #000;
+    font: 8px/1.4 sans-serif; color: #000; max-width: 60%;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
 </style>
 
 <div id="cw-container" style="width: 100%; height: 100%;"></div>
@@ -252,7 +258,8 @@ document.addEventListener("DOMContentLoaded", function() {
   // === CONFIG (from plugin form fields) ===
   var SHOW_RENDER_TIME = `{{ trmnl.plugin_settings.custom_fields_values.show_render_time }}` === 'true';
   // Default ON so first-time users see setup issues; advise turning OFF once the device is stable
-  // (transient fetch failures self-heal on the next refresh and the overlay covers the calendar).
+  // (a transient failure self-heals on the next refresh, and a problem that needs you
+  // still covers part of the calendar with the overlay).
   var SHOW_DIAGNOSTICS = `{{ trmnl.plugin_settings.custom_fields_values.show_diagnostics }}` !== 'false';
   // Comma-separated patterns; each is a case-insensitive regex tested against the
   // event title and description. Plain text behaves as "contains"; anchors give an
@@ -412,6 +419,16 @@ document.addEventListener("DOMContentLoaded", function() {
   function isFailedPollingSlot(raw) { return Array.isArray(raw) && raw.length === 0; }
 
   /**
+   * True when TRMNL stored an object with no keys (`{}`) for a polling slot. The
+   * middleware always answers with a populated object (the upstream payload, or
+   * an `error` field), so `{}` means the poll did not deliver data on that cycle
+   * rather than that the middleware sent a wrong shape.
+   * @param {*} raw
+   * @returns {boolean}
+   */
+  function isEmptyPollingSlot(raw) { return !!raw && typeof raw === 'object' && !Array.isArray(raw) && Object.keys(raw).length === 0; }
+
+  /**
    * Recover the calendar payload from raw data that may be double- or
    * triple-encoded JSON (a string inside a string) and may wrap the events one
    * level deep. Returns the object that holds the events, or null when the raw
@@ -434,6 +451,23 @@ document.addEventListener("DOMContentLoaded", function() {
       if (child && typeof child === 'object' && hasCalData(child)) return child;
     }
     return raw; // return whatever we have; diagnostics will flag it if still bad
+  }
+
+  /**
+   * True when every collected diagnostic is transient, so one small note is
+   * enough and the centered overlay can stay off the calendar grid. A transient
+   * diagnostic is one that the next poll clears on its own (a polling slot that
+   * delivered nothing). Anything else (a token mismatch, a wrong payload shape)
+   * needs a human, so it keeps the full overlay.
+   * @param {Array<{transient?: boolean}>} diagnostics
+   * @returns {boolean}
+   */
+  function allDiagnosticsAreTransient(diagnostics) {
+    if (!diagnostics || diagnostics.length === 0) return false;
+    for (var i = 0; i < diagnostics.length; i++) {
+      if (!diagnostics[i].transient) return false;
+    }
+    return true;
   }
 
   /**
@@ -522,8 +556,9 @@ document.addEventListener("DOMContentLoaded", function() {
   function truncate(s, n) { return s.length > n ? s.substring(0, n) + '...' : s; }
   function rawPreview(obj) { try { return truncate(JSON.stringify(obj), 200); } catch(e) { return String(obj).substring(0, 200); } }
 
-  // Both polled sources report the same two failures, so they share one wording.
+  // Both polled sources report the same three failures, so they share one wording.
   function pollFailedDetail(src) { return 'TRMNL stored an empty array for the ' + src + ' URL, which means the poll did not return JSON. Most often the URL answered with a Google error page instead of the middleware response. Open the ' + src + ' polling URL in a browser and check the Apps Script Executions log.'; }
+  function pollEmptyDetail(src) { return 'TRMNL stored an empty object for the ' + src + ' URL, so that poll delivered no data. The middleware never answers with an empty object, so the response did not reach TRMNL. This is usually a one-off and the next refresh replaces it. If it stays, open the ' + src + ' polling URL in a browser and check the Apps Script Executions log.'; }
   function pollReturnedTextDetail(src) { return 'The ' + src + ' URL answered with text that is not JSON, most often a Google error page instead of the middleware response. Open the ' + src + ' polling URL in a browser and check the Apps Script Executions log.'; }
 
   // Calendar diagnostics
@@ -555,6 +590,8 @@ document.addEventListener("DOMContentLoaded", function() {
     diag.push({label: 'Calendar: API error', detail: errMsg + '. ' + hint});
   } else if (isFailedPollingSlot(calRaw)) {
     diag.push({label: 'Calendar: poll failed', detail: pollFailedDetail('src=cal')});
+  } else if (isEmptyPollingSlot(calRaw)) {
+    diag.push({label: 'Calendar: poll delivered no data', detail: pollEmptyDetail('src=cal'), transient: true});
   } else if (!hasCalData(calRaw)) {
     var keys = Object.keys(calRaw);
     var dataKeys = calRaw.data ? Object.keys(calRaw.data) : [];
@@ -582,6 +619,8 @@ document.addEventListener("DOMContentLoaded", function() {
     diag.push({label: 'Weather: no data received', detail: 'IDX_1 is empty or null. Check the src=weather polling URL.' + localParseNote(wxFallbackErr)});
   } else if (isFailedPollingSlot(weatherRaw)) {
     diag.push({label: 'Weather: poll failed', detail: pollFailedDetail('src=weather')});
+  } else if (isEmptyPollingSlot(weatherRaw)) {
+    diag.push({label: 'Weather: poll delivered no data', detail: pollEmptyDetail('src=weather'), transient: true});
   } else if (!weatherRaw.daily) {
     diag.push({label: 'Weather: unexpected format', detail: 'Received data but no "daily" object. Keys: [' + Object.keys(weatherRaw).join(', ') + ']', raw: rawPreview(weatherRaw)});
   }
@@ -600,6 +639,15 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     d += '</div>';
     return d;
+  }
+  // A transient diagnostic clears itself at the next poll, so it must not cover
+  // the calendar with the centered overlay: one line at the bottom is enough.
+  function renderDiagNote() {
+    var n = '<div class="cw-diag-note px--1">';
+    for (var i = 0; i < diag.length; i++) {
+      n += (i ? ' / ' : '') + esc(diag[i].label);
+    }
+    return n + '. The next refresh usually fixes it.</div>';
   }
 
   if (!hasWeather && !hasCalData(calRaw)) {
@@ -932,7 +980,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
   h+='</div>';
   // Append diagnostic overlay if any issues were detected (shown on top of content)
-  if (SHOW_DIAGNOSTICS && diag.length > 0) { container.style.position = 'relative'; h += renderDiag(); }
+  if (SHOW_DIAGNOSTICS && diag.length > 0) { container.style.position = 'relative'; h += allDiagnosticsAreTransient(diag) ? renderDiagNote() : renderDiag(); }
   container.innerHTML=h;
 
   // Per-character coloring for the hourly temperature: any glyph whose horizontal center

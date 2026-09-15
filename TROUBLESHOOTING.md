@@ -26,6 +26,7 @@ The plugin includes a built-in diagnostic overlay that appears directly on the r
 | **Calendar: data truncated** | The calendar JSON was cut off mid-stream because TRMNL's data size limit was exceeded. Reduce the number of selected calendars or lower `daysAhead`/`maxTextLength` in the middleware CONFIG. |
 | **Calendar: poll returned text** | The `src=cal` URL answered with text instead of JSON, usually a Google error page. Open the URL in a browser and check the Apps Script Executions log. |
 | **Calendar: poll failed** | TRMNL could not parse the `src=cal` response at all and stored an empty array. Same cause and same check as "poll returned text". |
+| **Calendar: poll delivered no data** | TRMNL stored an empty object `{}` for the `src=cal` URL. The middleware never answers with an empty object, so the response did not reach TRMNL. It is usually a one-off and the next refresh replaces it. If it stays, open the URL in a browser and check the Apps Script Executions log. |
 | **Calendar: middleware cache write failed** | The middleware could not write its cache, usually because the calendar payload is over the 100 KB `CacheService` limit. Every poll then pays a slow live rebuild and may hit TRMNL's 30s timeout. Lower `daysAhead` or `maxTextLength` in the middleware CONFIG, or select fewer calendars. |
 | **Calendar: API error** | The middleware answered with an `{"error": ...}` object. The message names the cause; a token mismatch and missing URL parameters are the common ones. |
 | **Calendar: unexpected format** | IDX_0 returned data but it doesn't contain the expected `events` array or `data.events` structure. |
@@ -35,7 +36,10 @@ The plugin includes a built-in diagnostic overlay that appears directly on the r
 | **Weather: data truncated** | The weather JSON was cut off mid-stream because TRMNL's data size limit was exceeded. |
 | **Weather: poll returned text** | The `src=weather` URL answered with text instead of JSON. Same check as the calendar version. |
 | **Weather: poll failed** | TRMNL could not parse the `src=weather` response and stored an empty array. |
+| **Weather: poll delivered no data** | TRMNL stored an empty object `{}` for the `src=weather` URL. Same cause and same check as the calendar version. |
 | **Weather: unexpected format** | IDX_1 returned data but it has no `daily` object. |
+
+A transient problem does not get the big overlay. When every detected problem is one that the next poll clears by itself (a polling slot that delivered no data), the screen keeps the full calendar and shows one small note in the bottom right corner instead.
 
 The overlay also shows the raw structure of the received data (truncated) to help identify format mismatches.
 

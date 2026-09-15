@@ -9,7 +9,7 @@ The plugin's pure logic runs inline in two places a test runner cannot import: t
 `src/lib/*.js` holds the **only** hand-edited copy of the pure helpers, each with a `bun test` suite. A build step inlines them into the shipped files, so there is no second copy to keep in sync.
 
 - **Single source:** `src/lib/` modules stay pure, typed (JSDoc), and tested.
-  - From the template: `toMin`, `layoutOverlaps` (`eventLayout.js`); `dayInfo`, `calKey` (`dateLabels.js`); `compileIgnoredPhrases`, `isIgnoredEvent` (`ignoredEvents.js`); `sanitizeJson`, `parseLiquid`, `hasCalData`, `isFailedPollingSlot`, `deepParse` (`jsonRecovery.js`); `wIcon` (`weatherIcon.js`).
+  - From the template: `toMin`, `layoutOverlaps` (`eventLayout.js`); `dayInfo`, `calKey` (`dateLabels.js`); `compileIgnoredPhrases`, `isIgnoredEvent` (`ignoredEvents.js`); `sanitizeJson`, `parseLiquid`, `hasCalData`, `isFailedPollingSlot`, `isEmptyPollingSlot`, `deepParse` (`jsonRecovery.js`); `allDiagnosticsAreTransient` (`diagnosticSeverity.js`); `wIcon` (`weatherIcon.js`).
   - From the middleware: `cleanText`, `cacheKey`, `forecastUrl` (`middleware.js`).
 - **Templates with a marker:** `src/full.liquid.template` and `src/middleware/calendar_weather_proxy.gs.template` are the hand-edited shells. Each has one `@generated:helpers` marker where the helpers are inlined; everything else is authored there.
 - **Build step:** `build.mjs` (run with `bun run build`) reads each template, replaces the marker with the concatenated `src/lib` source (stripped of `export`/`import` so it is plain in-scope JS/GS), and writes the committed, ready-to-paste `src/full.liquid` and `.gs`. Each generated file carries a "GENERATED - do not edit" banner.

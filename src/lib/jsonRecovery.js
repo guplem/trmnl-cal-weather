@@ -48,6 +48,16 @@ export function hasCalData(obj) { return obj && typeof obj === 'object' && ((obj
 export function isFailedPollingSlot(raw) { return Array.isArray(raw) && raw.length === 0; }
 
 /**
+ * True when TRMNL stored an object with no keys (`{}`) for a polling slot. The
+ * middleware always answers with a populated object (the upstream payload, or
+ * an `error` field), so `{}` means the poll did not deliver data on that cycle
+ * rather than that the middleware sent a wrong shape.
+ * @param {*} raw
+ * @returns {boolean}
+ */
+export function isEmptyPollingSlot(raw) { return !!raw && typeof raw === 'object' && !Array.isArray(raw) && Object.keys(raw).length === 0; }
+
+/**
  * Recover the calendar payload from raw data that may be double- or
  * triple-encoded JSON (a string inside a string) and may wrap the events one
  * level deep. Returns the object that holds the events, or null when the raw

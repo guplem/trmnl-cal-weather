@@ -59,8 +59,9 @@ function fullLiquidHelpers() {
     '// binds the pure matcher to the IGNORED_PHRASES compiled in this scope.\n' +
     'function isIgnoredEvent(ev) { return isIgnoredEventPure(ev, IGNORED_PHRASES); }';
   const jsonRecovery = readModule('src/lib/jsonRecovery.js');
+  const diagnosticSeverity = readModule('src/lib/diagnosticSeverity.js');
   const weatherIcon = readModule('src/lib/weatherIcon.js');
-  return [eventLayout, dateLabels, ignored, jsonRecovery, weatherIcon].join('\n\n');
+  return [eventLayout, dateLabels, ignored, jsonRecovery, diagnosticSeverity, weatherIcon].join('\n\n');
 }
 
 // Helpers inlined into the Apps Script middleware `.gs`.
