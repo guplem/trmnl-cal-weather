@@ -14,6 +14,7 @@ Repo-wide conventions, the ADR index, and the Git workflow live in the root `AGE
 | `dateLabels.js` | `dayInfo`, `calKey` | `full.liquid` |
 | `ignoredEvents.js` | `compileIgnoredPhrases`, `isIgnoredEvent` | `full.liquid` |
 | `jsonRecovery.js` | `sanitizeJson`, `parseLiquid`, `hasCalData`, `isFailedPollingSlot`, `isEmptyPollingSlot`, `deepParse` | `full.liquid` |
+| `diagnosticSeverity.js` | `allDiagnosticsAreTransient` | `full.liquid` |
 | `weatherIcon.js` | `wIcon` | `full.liquid` |
 | `middleware.js` | `cleanText`, `cacheKey`, `forecastUrl` | `src/middleware/calendar_weather_proxy.gs` |
 

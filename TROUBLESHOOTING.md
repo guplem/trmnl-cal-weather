@@ -39,6 +39,8 @@ The plugin includes a built-in diagnostic overlay that appears directly on the r
 | **Weather: poll delivered no data** | TRMNL stored an empty object `{}` for the `src=weather` URL. Same cause and same check as the calendar version. |
 | **Weather: unexpected format** | IDX_1 returned data but it has no `daily` object. |
 
+A transient problem does not get the big overlay. When every detected problem is one that the next poll clears by itself (a polling slot that delivered no data), the screen keeps the full calendar and shows one small note in the bottom right corner instead.
+
 The overlay also shows the raw structure of the received data (truncated) to help identify format mismatches.
 
 ---

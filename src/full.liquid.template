@@ -242,6 +242,12 @@
   .cw-diag-item { border-bottom: 1px solid #AAA; }
   .cw-diag-label { font-weight: bold; }
   .cw-diag-raw { font: 9px/1.2 monospace; color: #555; word-break: break-all; max-height: 60px; overflow: hidden; }
+  .cw-diag-note {
+    position: absolute; bottom: 2px; right: 3px; z-index: 100;
+    background: #fff; border: 1px solid #000;
+    font: 8px/1.4 sans-serif; color: #000; max-width: 60%;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
 </style>
 
 <div id="cw-container" style="width: 100%; height: 100%;"></div>
@@ -251,7 +257,8 @@ document.addEventListener("DOMContentLoaded", function() {
   // === CONFIG (from plugin form fields) ===
   var SHOW_RENDER_TIME = `{{ trmnl.plugin_settings.custom_fields_values.show_render_time }}` === 'true';
   // Default ON so first-time users see setup issues; advise turning OFF once the device is stable
-  // (transient fetch failures self-heal on the next refresh and the overlay covers the calendar).
+  // (a transient failure self-heals on the next refresh, and a problem that needs you
+  // still covers part of the calendar with the overlay).
   var SHOW_DIAGNOSTICS = `{{ trmnl.plugin_settings.custom_fields_values.show_diagnostics }}` !== 'false';
   // Comma-separated patterns; each is a case-insensitive regex tested against the
   // event title and description. Plain text behaves as "contains"; anchors give an
@@ -359,7 +366,7 @@ document.addEventListener("DOMContentLoaded", function() {
   } else if (isFailedPollingSlot(calRaw)) {
     diag.push({label: 'Calendar: poll failed', detail: pollFailedDetail('src=cal')});
   } else if (isEmptyPollingSlot(calRaw)) {
-    diag.push({label: 'Calendar: poll delivered no data', detail: pollEmptyDetail('src=cal')});
+    diag.push({label: 'Calendar: poll delivered no data', detail: pollEmptyDetail('src=cal'), transient: true});
   } else if (!hasCalData(calRaw)) {
     var keys = Object.keys(calRaw);
     var dataKeys = calRaw.data ? Object.keys(calRaw.data) : [];
@@ -388,7 +395,7 @@ document.addEventListener("DOMContentLoaded", function() {
   } else if (isFailedPollingSlot(weatherRaw)) {
     diag.push({label: 'Weather: poll failed', detail: pollFailedDetail('src=weather')});
   } else if (isEmptyPollingSlot(weatherRaw)) {
-    diag.push({label: 'Weather: poll delivered no data', detail: pollEmptyDetail('src=weather')});
+    diag.push({label: 'Weather: poll delivered no data', detail: pollEmptyDetail('src=weather'), transient: true});
   } else if (!weatherRaw.daily) {
     diag.push({label: 'Weather: unexpected format', detail: 'Received data but no "daily" object. Keys: [' + Object.keys(weatherRaw).join(', ') + ']', raw: rawPreview(weatherRaw)});
   }
@@ -408,6 +415,16 @@ document.addEventListener("DOMContentLoaded", function() {
     d += '</div>';
     return d;
   }
+  // A transient diagnostic clears itself at the next poll, so it must not cover
+  // the calendar with the centered overlay: one line at the bottom is enough.
+  function renderDiagNote() {
+    var n = '<div class="cw-diag-note px--1">';
+    for (var i = 0; i < diag.length; i++) {
+      n += (i ? ' / ' : '') + esc(diag[i].label);
+    }
+    return n + '. The next refresh usually fixes it.</div>';
+  }
+
   if (!hasWeather && !hasCalData(calRaw)) {
     container.style.position = 'relative';
     container.innerHTML = '<div class="cw-empty">No data available</div>' + (SHOW_DIAGNOSTICS ? renderDiag() : '');
@@ -738,7 +755,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
   h+='</div>';
   // Append diagnostic overlay if any issues were detected (shown on top of content)
-  if (SHOW_DIAGNOSTICS && diag.length > 0) { container.style.position = 'relative'; h += renderDiag(); }
+  if (SHOW_DIAGNOSTICS && diag.length > 0) { container.style.position = 'relative'; h += allDiagnosticsAreTransient(diag) ? renderDiagNote() : renderDiag(); }
   container.innerHTML=h;
 
   // Per-character coloring for the hourly temperature: any glyph whose horizontal center
