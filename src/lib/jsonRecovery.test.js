@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { sanitizeJson, parseLiquid, hasCalData, isFailedPollingSlot, deepParse } from "./jsonRecovery.js";
+import { sanitizeJson, parseLiquid, hasCalData, isFailedPollingSlot, isEmptyPollingSlot, deepParse } from "./jsonRecovery.js";
 
 // Characterization tests pinning the behavior also inlined in src/full.liquid.
 
@@ -57,6 +57,21 @@ describe("isFailedPollingSlot", () => {
     expect(isFailedPollingSlot(null)).toBe(false);
     expect(isFailedPollingSlot(undefined)).toBe(false);
     expect(isFailedPollingSlot({ data: { events: [] } })).toBe(false);
+  });
+});
+
+describe("isEmptyPollingSlot", () => {
+  it("is true for an object with no keys (what TRMNL stores when a poll delivered nothing)", () => {
+    expect(isEmptyPollingSlot({})).toBe(true);
+  });
+
+  it("is false for anything else, including the empty array of a failed poll", () => {
+    expect(isEmptyPollingSlot([])).toBe(false);
+    expect(isEmptyPollingSlot({ error: "unauthorized" })).toBe(false);
+    expect(isEmptyPollingSlot({ daily: {} })).toBe(false);
+    expect(isEmptyPollingSlot(null)).toBe(false);
+    expect(isEmptyPollingSlot(undefined)).toBe(false);
+    expect(isEmptyPollingSlot("")).toBe(false);
   });
 });
 

@@ -324,8 +324,9 @@ document.addEventListener("DOMContentLoaded", function() {
   function truncate(s, n) { return s.length > n ? s.substring(0, n) + '...' : s; }
   function rawPreview(obj) { try { return truncate(JSON.stringify(obj), 200); } catch(e) { return String(obj).substring(0, 200); } }
 
-  // Both polled sources report the same two failures, so they share one wording.
+  // Both polled sources report the same three failures, so they share one wording.
   function pollFailedDetail(src) { return 'TRMNL stored an empty array for the ' + src + ' URL, which means the poll did not return JSON. Most often the URL answered with a Google error page instead of the middleware response. Open the ' + src + ' polling URL in a browser and check the Apps Script Executions log.'; }
+  function pollEmptyDetail(src) { return 'TRMNL stored an empty object for the ' + src + ' URL, so that poll delivered no data. The middleware never answers with an empty object, so the response did not reach TRMNL. This is usually a one-off and the next refresh replaces it. If it stays, open the ' + src + ' polling URL in a browser and check the Apps Script Executions log.'; }
   function pollReturnedTextDetail(src) { return 'The ' + src + ' URL answered with text that is not JSON, most often a Google error page instead of the middleware response. Open the ' + src + ' polling URL in a browser and check the Apps Script Executions log.'; }
 
   // Calendar diagnostics
@@ -357,6 +358,8 @@ document.addEventListener("DOMContentLoaded", function() {
     diag.push({label: 'Calendar: API error', detail: errMsg + '. ' + hint});
   } else if (isFailedPollingSlot(calRaw)) {
     diag.push({label: 'Calendar: poll failed', detail: pollFailedDetail('src=cal')});
+  } else if (isEmptyPollingSlot(calRaw)) {
+    diag.push({label: 'Calendar: poll delivered no data', detail: pollEmptyDetail('src=cal')});
   } else if (!hasCalData(calRaw)) {
     var keys = Object.keys(calRaw);
     var dataKeys = calRaw.data ? Object.keys(calRaw.data) : [];
@@ -384,6 +387,8 @@ document.addEventListener("DOMContentLoaded", function() {
     diag.push({label: 'Weather: no data received', detail: 'IDX_1 is empty or null. Check the src=weather polling URL.' + localParseNote(wxFallbackErr)});
   } else if (isFailedPollingSlot(weatherRaw)) {
     diag.push({label: 'Weather: poll failed', detail: pollFailedDetail('src=weather')});
+  } else if (isEmptyPollingSlot(weatherRaw)) {
+    diag.push({label: 'Weather: poll delivered no data', detail: pollEmptyDetail('src=weather')});
   } else if (!weatherRaw.daily) {
     diag.push({label: 'Weather: unexpected format', detail: 'Received data but no "daily" object. Keys: [' + Object.keys(weatherRaw).join(', ') + ']', raw: rawPreview(weatherRaw)});
   }
@@ -403,7 +408,6 @@ document.addEventListener("DOMContentLoaded", function() {
     d += '</div>';
     return d;
   }
-
   if (!hasWeather && !hasCalData(calRaw)) {
     container.style.position = 'relative';
     container.innerHTML = '<div class="cw-empty">No data available</div>' + (SHOW_DIAGNOSTICS ? renderDiag() : '');
